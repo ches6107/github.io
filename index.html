@@ -3,263 +3,157 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>紡織生產記錄表單 - 數位管理版</title>
+    <title>生產記錄管理系統 (正式格式版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { 
-            font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; 
-            background-color: #f3f4f6;
-            -webkit-text-size-adjust: 100%;
+            font-family: "Inter", "Noto Sans TC", "微軟正黑體", sans-serif; 
+            background-color: #f1f5f9;
+            color: #1e293b;
         }
         
-        .custom-table {
-            border: 1.5px solid #000;
-            border-collapse: collapse;
-            width: 100%;
+        .page-break {
+            page-break-after: always;
             background: white;
-            table-layout: fixed; /* 確保在手機上不會破版 */
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            width: 100%;
+            max-width: 1000px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1.5px solid #000;
+            background: white;
+            table-layout: fixed;
+            /* 讓表格在容器中置中 */
+            margin-left: auto;
+            margin-right: auto;
         }
         
-        .custom-table td {
+        .report-table th, .report-table td {
             border: 1px solid #000;
-            height: 38px;
+            height: 32px;
             padding: 0;
-            position: relative;
-            word-break: break-all;
+            vertical-align: middle;
+            text-align: center;
+            font-size: 13px;
         }
 
-        .no-border-b { border-bottom: none !important; }
-        .no-border-t { border-top: none !important; }
+        .label-bg { background-color: #ffffff; font-weight: 500; }
 
-        .input-cell {
+        .cell-input {
             width: 100%;
             height: 100%;
             border: none;
             outline: none;
-            background: transparent;
             text-align: center;
             font-size: 14px;
-            appearance: none;
-            -webkit-appearance: none;
+            background: transparent;
         }
 
-        select.input-cell {
-            cursor: pointer;
-            padding: 0 2px;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23666'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 2px center;
-            background-size: 10px;
-        }
-
-        .label-text {
-            font-size: 12px;
-            text-align: center;
-            display: block;
-            width: 100%;
-            font-weight: bold;
-            line-height: 1.2;
-        }
-
-        /* 彈窗樣式優化以符合手機操作 */
-        #settingsModal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.6);
-            z-index: 100;
-            align-items: center;
-            justify-content: center;
-            padding: 10px;
-        }
-
-        .modal-content {
-            background: white;
-            padding: 16px;
-            border-radius: 12px;
-            width: 100%;
-            max-width: 800px;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        /* 針對小螢幕微調表格高度與字體 */
-        @media (max-width: 640px) {
-            .custom-table td { height: 42px; }
-            .label-text { font-size: 11px; }
-            .input-cell { font-size: 13px; }
-        }
+        select.cell-input { appearance: none; cursor: pointer; }
 
         @media print {
             .no-print { display: none !important; }
-            body { padding: 0; background: white; }
-            .container { max-width: 100%; width: 100%; box-shadow: none; padding: 0; margin: 0; }
-            .custom-table { border-width: 2px; }
+            body { background: white; padding: 0; }
+            .page-break {
+                box-shadow: none;
+                margin: 0 auto;
+                padding: 5mm;
+                page-break-after: always;
+                max-width: none;
+            }
+            .report-table { border: 1.5px solid #000; }
         }
+
+        .text-left-cell { text-align: left !important; padding-left: 6px !important; }
+        
+        .page-watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 80px;
+            color: rgba(0,0,0,0.05);
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .relative-container { position: relative; }
     </style>
 </head>
-<body class="p-2 sm:p-4 md:p-8">
+<body class="p-2 sm:p-4">
 
-    <!-- 齒輪設定彈窗 -->
-    <div id="settingsModal" class="no-print">
-        <div class="modal-content shadow-2xl">
-            <div class="flex justify-between items-center mb-4 border-b pb-4">
-                <h2 class="text-lg font-bold flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    設定管理
-                </h2>
-                <button onclick="closeModal()" class="text-gray-500 hover:text-black">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-            
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <!-- 昇絲人員管理 -->
-                <div class="bg-gray-50 p-3 rounded-lg border">
-                    <label class="block font-bold mb-2 text-sm border-b pb-1">昇絲人員</label>
-                    <div class="flex gap-2 mb-2">
-                        <input type="text" id="new_staff" class="border rounded px-2 py-1 text-sm flex-grow" placeholder="姓名">
-                        <button onclick="addItem('staff')" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 font-bold">+</button>
-                    </div>
-                    <ul id="list_staff" class="text-xs h-24 overflow-y-auto bg-white border rounded"></ul>
+    <!-- 設定彈窗 -->
+    <div id="settingsModal" class="no-print" style="display: none;">
+        <div class="fixed inset-0 bg-black/50 z-[1000] flex items-center justify-center p-4">
+            <div class="bg-white w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden">
+                <div class="p-4 border-b flex justify-between items-center bg-slate-50">
+                    <h2 class="font-bold">選單資料管理</h2>
+                    <button onclick="closeModal()" class="text-2xl">&times;</button>
                 </div>
-                <!-- 管紗代號管理 -->
-                <div class="bg-gray-50 p-3 rounded-lg border">
-                    <label class="block font-bold mb-2 text-sm border-b pb-1">管紗代號</label>
-                    <div class="flex gap-2 mb-2">
-                        <input type="text" id="new_yarn" class="border rounded px-2 py-1 text-sm flex-grow" placeholder="代號">
-                        <button onclick="addItem('yarn')" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 font-bold">+</button>
+                <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[70vh] overflow-y-auto">
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-slate-500 uppercase">昇絲人員</label>
+                        <div class="flex gap-1"><input type="text" id="new_staff" class="border flex-1 px-2 py-1 rounded"><button onclick="addItem('staff')" class="bg-blue-600 text-white px-2 rounded">+</button></div>
+                        <ul id="list_staff" class="border rounded h-24 overflow-y-auto text-sm"></ul>
                     </div>
-                    <ul id="list_yarn" class="text-xs h-24 overflow-y-auto bg-white border rounded"></ul>
-                </div>
-                <!-- 斷絲原因 (O) -->
-                <div class="bg-red-50 p-3 rounded-lg border border-red-100">
-                    <label class="block font-bold mb-2 text-sm border-b border-red-200 pb-1 text-red-700">斷絲原因 (O)</label>
-                    <div class="flex gap-2 mb-2">
-                        <input type="text" id="new_breakReason" class="border rounded px-2 py-1 text-sm flex-grow" placeholder="原因">
-                        <button onclick="addItem('breakReason')" class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 font-bold">+</button>
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-slate-500 uppercase">管紗代號</label>
+                        <div class="flex gap-1"><input type="text" id="new_yarn" class="border flex-1 px-2 py-1 rounded"><button onclick="addItem('yarn')" class="bg-blue-600 text-white px-2 rounded">+</button></div>
+                        <ul id="list_yarn" class="border rounded h-24 overflow-y-auto text-sm"></ul>
                     </div>
-                    <ul id="list_breakReason" class="text-xs h-24 overflow-y-auto bg-white border rounded"></ul>
-                </div>
-                <!-- 空錠原因 (X) -->
-                <div class="bg-slate-100 p-3 rounded-lg border border-slate-200">
-                    <label class="block font-bold mb-2 text-sm border-b border-slate-300 pb-1 text-slate-700">空錠原因 (X)</label>
-                    <div class="flex gap-2 mb-2">
-                        <input type="text" id="new_emptyReason" class="border rounded px-2 py-1 text-sm flex-grow" placeholder="原因">
-                        <button onclick="addItem('emptyReason')" class="bg-slate-600 text-white px-3 py-1 rounded hover:bg-slate-700 font-bold">+</button>
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-red-500 uppercase">斷絲原因 (O)</label>
+                        <div class="flex gap-1"><input type="text" id="new_breakReason" class="border flex-1 px-2 py-1 rounded border-red-200"><button onclick="addItem('breakReason')" class="bg-red-600 text-white px-2 rounded">+</button></div>
+                        <ul id="list_breakReason" class="border rounded h-24 overflow-y-auto text-sm"></ul>
                     </div>
-                    <ul id="list_emptyReason" class="text-xs h-24 overflow-y-auto bg-white border rounded"></ul>
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-slate-500 uppercase">空錠原因 (X)</label>
+                        <div class="flex gap-1"><input type="text" id="new_emptyReason" class="border flex-1 px-2 py-1 rounded"><button onclick="addItem('emptyReason')" class="bg-slate-700 text-white px-2 rounded">+</button></div>
+                        <ul id="list_emptyReason" class="border rounded h-24 overflow-y-auto text-sm"></ul>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="mt-6 flex justify-center">
-                <button onclick="closeModal()" class="w-full sm:w-auto bg-slate-800 text-white px-10 py-3 rounded-lg hover:bg-black transition font-bold">完成設定</button>
+                <div class="p-4 bg-slate-50 border-t text-center">
+                    <button onclick="closeModal()" class="bg-slate-800 text-white px-8 py-2 rounded-lg font-bold">完成並套用</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="max-w-4xl mx-auto container">
-        
-        <div class="bg-white p-3 sm:p-6 md:p-8 shadow-xl relative min-h-screen">
-            <!-- 工具列優化 -->
-            <div class="flex flex-wrap justify-between items-center gap-2 mb-4 no-print border-b pb-3">
-                <h1 class="text-lg font-bold text-gray-800">生產記錄表</h1>
-                <div class="flex gap-2 items-center">
-                    <button onclick="openModal()" class="text-blue-600 p-2 border rounded" title="設定">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        </svg>
-                    </button>
-                    <button onclick="window.print()" class="bg-black text-white px-3 py-2 rounded text-sm font-bold">列印</button>
-                    <button onclick="confirmClear()" class="border border-red-500 text-red-500 px-3 py-2 rounded text-sm">清空</button>
-                </div>
-            </div>
-
-            <div id="printableContent" class="overflow-x-auto">
-                <!-- 頂部資訊表格 -->
-                <table class="custom-table mb-4">
-                    <tr>
-                        <td class="w-20"><span class="label-text">機台號</span></td>
-                        <td><input type="text" class="input-cell"></td>
-                        <td class="w-16 bg-gray-50"><span class="label-text">滿管</span></td>
-                        <td class="w-16 bg-gray-50"><span class="label-text">非滿</span></td>
-                        <td class="w-16 bg-gray-50"><span class="label-text">空錠</span></td>
-                    </tr>
-                    <tr>
-                        <td><span class="label-text">昇絲員</span></td>
-                        <td><select class="input-cell dropdown-staff"></select></td>
-                        <td><input type="text" class="input-cell" placeholder="數"></td>
-                        <td><input type="text" class="input-cell" placeholder="O"></td>
-                        <td><input type="text" class="input-cell" placeholder="X"></td>
-                    </tr>
-                </table>
-
-                <!-- 中間參數表格 -->
-                <table class="custom-table mb-4">
-                    <tr class="bg-gray-50">
-                        <td><span class="label-text">管紗代號</span></td>
-                        <td><span class="label-text">試驗卡別</span></td>
-                        <td><span class="label-text">紡織班</span></td>
-                    </tr>
-                    <tr>
-                        <td><select class="input-cell dropdown-yarn"></select></td>
-                        <td><select class="input-cell dropdown-card"></select></td>
-                        <td>
-                            <select class="input-cell">
-                                <option value=""></option><option>甲</option><option>乙</option><option>丙</option>
-                            </select>
-                        </td>
-                    </tr>
-                </table>
-
-                <!-- 下方明細表格：加入左右滾動容器確保小手機可看全 -->
-                <div class="w-full">
-                    <table class="custom-table">
-                        <thead>
-                            <tr class="bg-gray-100">
-                                <td class="w-10"><span class="label-text">錠</span></td>
-                                <td class="w-16"><span class="label-text">狀態</span></td>
-                                <td class="w-16"><span class="label-text">米長</span></td>
-                                <td><span class="label-text px-1">異常原因 (選單內容隨狀態切換)</span></td>
-                            </tr>
-                        </thead>
-                        <tbody id="tableBody"></tbody>
-                    </table>
-                </div>
-
-                <div class="mt-6 text-center select-none no-print">
-                    <span class="text-4xl font-bold text-gray-200 italic">第 1 頁</span>
-                </div>
-            </div>
+    <!-- 工具欄 -->
+    <div class="max-w-[1000px] mx-auto mb-4 no-print flex flex-wrap justify-between items-center bg-white p-4 rounded-lg shadow-sm gap-2">
+        <h1 class="font-bold text-lg flex items-center gap-2">
+            <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-sm">正式版</span> 
+            生產記錄系統
+        </h1>
+        <div class="flex gap-2">
+            <button onclick="openModal()" class="border border-slate-300 px-4 py-1.5 rounded-lg text-sm hover:bg-slate-50">設定選單</button>
+            <button onclick="window.print()" class="bg-blue-600 text-white px-5 py-1.5 rounded-lg text-sm font-bold shadow-md hover:bg-blue-700">列印報表 (PDF)</button>
+            <button onclick="confirmClear()" class="text-red-500 text-sm px-2">清空</button>
         </div>
     </div>
+
+    <!-- 報表容器 -->
+    <div id="pagesContainer"></div>
 
     <script>
         let config = JSON.parse(localStorage.getItem('formConfig')) || {
-            staff: ["王小明", "李阿華"],
-            yarn: ["A100", "B200", "C300"],
-            card: ["一般", "急件", "測試"],
-            breakReason: ["斷頭", "飄絲", "毛羽過多"],
-            emptyReason: ["機械故障", "原料短缺", "計畫性停機"],
+            staff: ["王小明", "李大華"],
+            yarn: ["代號A", "代號B"],
+            breakReason: ["斷頭", "飄絲", "毛羽"],
+            emptyReason: ["機械故障", "缺料", "保養"],
             status: ["", "O", "X"]
         };
 
-        function openModal() { document.getElementById('settingsModal').style.display = 'flex'; }
+        function openModal() { document.getElementById('settingsModal').style.display = 'block'; }
         function closeModal() { document.getElementById('settingsModal').style.display = 'none'; }
-
-        function saveConfig() {
-            localStorage.setItem('formConfig', JSON.stringify(config));
-            renderDropdowns();
-            renderConfigLists();
-        }
 
         function addItem(type) {
             const input = document.getElementById(`new_${type}`);
@@ -275,84 +169,180 @@
             saveConfig();
         }
 
+        function saveConfig() {
+            localStorage.setItem('formConfig', JSON.stringify(config));
+            renderAllPages();
+            renderConfigLists();
+        }
+
         function renderConfigLists() {
             ['staff', 'yarn', 'breakReason', 'emptyReason'].forEach(type => {
                 const ul = document.getElementById(`list_${type}`);
                 if (!ul) return;
                 ul.innerHTML = config[type].map((item, index) => `
-                    <li class="flex justify-between items-center px-2 py-1.5 border-b last:border-0">
+                    <li class="flex justify-between items-center px-3 py-1.5 border-b last:border-0">
                         <span>${item}</span>
-                        <button onclick="removeItem('${type}', ${index})" class="text-red-500 px-1 font-bold">×</button>
+                        <button onclick="removeItem('${type}', ${index})" class="text-red-400 hover:text-red-600">&times;</button>
                     </li>
                 `).join('');
             });
         }
 
-        function renderDropdowns(clearAll = false) {
-            const tableBody = document.getElementById('tableBody');
-            const savedData = Array.from(tableBody.querySelectorAll('tr')).map(tr => ({
-                status: tr.querySelector('.status-select').value,
-                reason: tr.querySelector('.reason-select').value,
-                length: tr.querySelector('.len-input').value
-            }));
+        function createPageHTML(pageNum, startIdx, endIdx) {
+            return `
+                <div class="page-break relative-container">
+                    <div class="page-watermark">第 ${pageNum} 頁</div>
+                    
+                    <!-- 頂部區塊 1 -->
+                    <table class="report-table mb-[-1px]">
+                        <tr>
+                            <td class="w-[18%] label-bg border-b-0">機台-落絲號</td>
+                            <td class="w-[12%] label-bg">項目</td>
+                            <td class="w-[20%] label-bg">滿管</td>
+                            <td class="w-[20%] label-bg">未滿管</td>
+                            <td class="w-[15%] label-bg">空錠</td>
+                            <td class="w-[15%] label-bg border-b-0">錠位範圍</td>
+                        </tr>
+                        <tr>
+                            <td class="border-t-0"><input type="text" class="cell-input font-bold" placeholder=""></td>
+                            <td class="label-bg">代號</td>
+                            <td><input type="text" class="cell-input"></td>
+                            <td class="font-bold text-red-600 text-lg">O</td>
+                            <td class="font-bold text-slate-400 text-lg">X</td>
+                            <td class="bg-gray-50 font-medium border-t-0">${startIdx}~${endIdx}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-bg font-bold border-b-0">昇絲人員</td>
+                            <td class="label-bg">落絲數</td>
+                            <td rowspan="2"></td>
+                            <td rowspan="2"></td>
+                            <td rowspan="2"></td>
+                            <td rowspan="2" class="border-t-0"></td>
+                        </tr>
+                        <tr>
+                            <td class="border-t-0">
+                                <select class="cell-input dropdown-staff text-center font-bold w-full h-full"></select>
+                            </td>
+                            <td class="bg-white"></td>
+                        </tr>
+                    </table>
 
-            // 更新頂部選單
-            document.querySelectorAll('.dropdown-staff').forEach(s => updateSelect(s, config.staff));
-            document.querySelectorAll('.dropdown-yarn').forEach(s => updateSelect(s, config.yarn));
-            document.querySelectorAll('.dropdown-card').forEach(s => updateSelect(s, config.card));
-            
-            tableBody.innerHTML = '';
-            for (let i = 1; i <= 24; i++) {
-                const prev = savedData[i-1] || { status: "", reason: "", length: "" };
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="text-center font-bold bg-gray-50">${i}</td>
-                    <td>
-                        <select class="input-cell status-select font-bold" onchange="handleStatusChange(this)">
-                            ${config.status.map(v => `<option value="${v}" ${v === prev.status ? 'selected' : ''}>${v}</option>`).join('')}
-                        </select>
-                    </td>
-                    <td><input type="text" class="input-cell len-input" value="${prev.length}"></td>
-                    <td>
-                        <select class="input-cell text-left px-2 reason-select">
-                            ${getReasonOptions(prev.status, prev.reason)}
-                        </select>
-                    </td>
-                `;
-                tableBody.appendChild(tr);
-            }
+                    <!-- 頂部區塊 2 -->
+                    <table class="report-table mb-4">
+                        <tr class="label-bg">
+                            <td>管紗代號</td>
+                            <td>試驗卡別</td>
+                            <td>紡織班別</td>
+                            <td>中檢班別</td>
+                            <td>掛絲數量</td>
+                            <td>落絲數量</td>
+                        </tr>
+                        <tr>
+                            <td><select class="cell-input dropdown-yarn"></select></td>
+                            <td>
+                                <select class="cell-input">
+                                    <option></option><option>一般</option><option>急件</option><option>測試</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select class="cell-input">
+                                    <option></option><option>甲</option><option>乙</option><option>丙</option>
+                                </select>
+                            </td>
+                            <td><input type="text" class="cell-input"></td>
+                            <td><input type="text" class="cell-input"></td>
+                            <td><input type="text" class="cell-input"></td>
+                        </tr>
+                    </table>
+
+                    <!-- 明細表 -->
+                    <table class="report-table">
+                        <thead>
+                            <tr class="label-bg">
+                                <th class="w-[10%]">錠位</th>
+                                <th class="w-[15%]">非滿管 O、空錠 X</th>
+                                <th class="w-[10%]">紡位</th>
+                                <th class="w-[15%]">米長</th>
+                                <th class="text-left-cell">斷絲、空錠原因</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody_${pageNum}"></tbody>
+                    </table>
+                    
+                    <div class="mt-4 text-right text-xs text-slate-400 no-print">
+                        製表日期：${new Date().toLocaleDateString()}
+                    </div>
+                </div>
+            `;
         }
 
-        function getReasonOptions(status, currentReason) {
-            let options = ['<option value=""></option>'];
-            let list = (status === 'O') ? config.breakReason : (status === 'X' ? config.emptyReason : []);
-            list.forEach(r => {
-                options.push(`<option value="${r}" ${r === currentReason ? 'selected' : ''}>${r}</option>`);
+        function renderAllPages() {
+            const container = document.getElementById('pagesContainer');
+            container.innerHTML = '';
+            
+            const pageRanges = [
+                { p: 1, s: 1, e: 24 },
+                { p: 2, s: 25, e: 48 },
+                { p: 3, s: 49, e: 72 },
+                { p: 4, s: 73, e: 96 }
+            ];
+
+            pageRanges.forEach(range => {
+                container.innerHTML += createPageHTML(range.p, range.s, range.e);
+                const tbody = document.getElementById(`tableBody_${range.p}`);
+                
+                for (let i = range.s; i <= range.e; i++) {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="label-bg font-bold text-slate-600">${i}</td>
+                        <td>
+                            <select class="cell-input status-select font-bold" onchange="handleStatusChange(this)">
+                                ${config.status.map(v => `<option value="${v}">${v}</option>`).join('')}
+                            </select>
+                        </td>
+                        <td><input type="text" class="cell-input"></td>
+                        <td><input type="text" class="cell-input"></td>
+                        <td class="text-left-cell">
+                            <select class="cell-input text-left-cell reason-select"></select>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                }
             });
-            return options.join('');
+
+            document.querySelectorAll('.dropdown-staff').forEach(s => updateSelect(s, config.staff));
+            document.querySelectorAll('.dropdown-yarn').forEach(s => updateSelect(s, config.yarn));
         }
 
         function handleStatusChange(statusSelect) {
             const row = statusSelect.closest('tr');
             const reasonSelect = row.querySelector('.reason-select');
-            reasonSelect.innerHTML = getReasonOptions(statusSelect.value, "");
+            const status = statusSelect.value;
+            
+            let options = ['<option value=""></option>'];
+            let list = (status === 'O') ? config.breakReason : (status === 'X' ? config.emptyReason : []);
+            list.forEach(r => options.push(`<option value="${r}">${r}</option>`));
+            
+            reasonSelect.innerHTML = options.join('');
+            
+            if (status === 'O') statusSelect.style.color = '#ef4444';
+            else if (status === 'X') statusSelect.style.color = '#94a3b8';
+            else statusSelect.style.color = '#000';
         }
 
         function updateSelect(el, items) {
-            const val = el.value;
-            el.innerHTML = '<option value=""></option>' + items.map(item => `<option value="${item}" ${item === val ? 'selected' : ''}>${item}</option>`).join('');
+            const currentVal = el.value;
+            el.innerHTML = '<option value=""></option>' + items.map(item => `<option value="${item}" ${item === currentVal ? 'selected' : ''}>${item}</option>`).join('');
         }
 
         function confirmClear() {
-            if (confirm('確定要清空所有資料嗎？')) {
-                document.querySelectorAll('input').forEach(i => i.value = '');
-                document.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
-                renderDropdowns();
+            if (confirm('確定清空所有數據嗎？')) {
+                renderAllPages();
             }
         }
 
         renderConfigLists();
-        renderDropdowns();
+        renderAllPages();
     </script>
 </body>
 </html>
