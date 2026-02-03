@@ -154,14 +154,19 @@
             <span class="text-sm font-bold text-slate-500">當前機台：</span>
             <select id="machineSelector" onchange="switchMachine(this.value)" class="border rounded px-2 py-1 text-sm font-bold bg-slate-50 border-slate-300 min-w-[120px] outline-none focus:border-blue-500">
             </select>
-            <button onclick="addNewMachine()" class="w-8 h-8 flex items-center justify-center bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 font-bold transition-colors">+</button>
-            <button id="delMachineBtn" onclick="deleteCurrentMachine()" class="w-8 h-8 flex items-center justify-center bg-red-50 text-red-600 rounded-full hover:bg-red-100 font-bold transition-colors">×</button>
+            <button onclick="addNewMachine()" title="新增機台" class="w-8 h-8 flex items-center justify-center bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 font-bold transition-colors">+</button>
+            <button id="delMachineBtn" onclick="deleteCurrentMachine()" title="刪除此機台" class="w-8 h-8 flex items-center justify-center bg-red-50 text-red-600 rounded-full hover:bg-red-100 font-bold transition-colors">×</button>
         </div>
 
-        <div class="flex gap-2">
+        <div class="flex items-center gap-2">
+            <!-- 新增存儲鍵 -->
+            <button onclick="manualSave()" class="bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow hover:bg-emerald-700 transition-colors flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                儲存當前設定
+            </button>
             <button onclick="openModal()" class="border border-slate-300 px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">設定選單</button>
-            <button onclick="window.print()" class="bg-blue-600 text-white px-5 py-1.5 rounded-lg text-sm font-bold shadow hover:bg-blue-700 transition-colors">列印報表 (PDF)</button>
-            <button onclick="confirmClearAll()" class="text-red-400 text-xs px-2 hover:text-red-600">清空數據</button>
+            <button onclick="window.print()" class="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow hover:bg-blue-700 transition-colors">列印報表</button>
+            <button onclick="confirmClearCurrentMachine()" class="text-red-500 text-xs px-2 py-1 hover:bg-red-50 rounded transition-colors font-medium">清空當前機台數據</button>
         </div>
     </div>
 
@@ -169,7 +174,7 @@
     <div id="pagesContainer"></div>
 
     <script>
-        // 初始狀態：根據圖片內容匯入
+        // 初始狀態
         let state = JSON.parse(localStorage.getItem('prodSystemState_v5')) || {
             activeId: 'm-default',
             machines: [
@@ -194,20 +199,32 @@
 
         // --- 核心邏輯 ---
 
+        // 儲存當前狀態（包含 UI 所有輸入值）
         function saveState() {
             if (state.activeId) {
                 const currentMachine = state.machines.find(m => m.id === state.activeId);
                 if (currentMachine) {
-                    // 關鍵修改：切換前確保把目前畫面上所有 input/select 的值都收集起來
                     currentMachine.data = collectCurrentPageData();
                 }
             }
             localStorage.setItem('prodSystemState_v5', JSON.stringify(state));
         }
 
+        // 手動儲存按鈕點擊事件
+        function manualSave() {
+            saveState();
+            const btn = event.currentTarget;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '已儲存！';
+            btn.classList.replace('bg-emerald-600', 'bg-green-500');
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.classList.replace('bg-green-500', 'bg-emerald-600');
+            }, 1500);
+        }
+
         function collectCurrentPageData() {
             const data = {};
-            // 抓取頁面上所有帶有 data-field 的元素，包含隱藏頁面的 input
             document.querySelectorAll('[data-field]').forEach(el => {
                 data[el.getAttribute('data-field')] = el.value;
             });
@@ -223,8 +240,7 @@
         }
 
         function switchMachine(id) {
-            // 切換前，先完整儲存當前機台頁面的所有變動
-            saveState();
+            saveState(); // 切換前存檔
             state.activeId = id;
             renderMachineSelector();
             renderReportPage();
@@ -234,10 +250,9 @@
             const name = prompt("請輸入新機台名稱 (例如 B, C):");
             if (!name) return;
             
-            // 建立新機台前，先儲存舊機台當前狀態
-            saveState();
+            saveState(); // 切換前存檔
 
-            // 抓取當前頁面的範圍設定，讓新機台預設繼承相同頁面視角
+            // 繼承當前頁面的分頁設定
             const currentP1Range = document.querySelector('[data-field="p1_range"]')?.value || "1-24";
             const currentP3Range = document.querySelector('[data-field="p3_range"]')?.value || "49-72";
 
@@ -266,6 +281,24 @@
             renderReportPage();
         }
 
+        // 修改：僅清空當前機台數據，不影響其他機台
+        function confirmClearCurrentMachine() {
+            const machine = state.machines.find(m => m.id === state.activeId);
+            if (!machine) return;
+            
+            if (confirm(`確定要清空機台「${machine.name}」的所有輸入數據嗎？ (設定選單將保留)`)) {
+                // 保留分頁範圍設定，清空其餘數據
+                const p1r = machine.data.p1_range;
+                const p3r = machine.data.p3_range;
+                machine.data = {
+                    p1_range: p1r,
+                    p3_range: p3r
+                };
+                saveState();
+                renderReportPage();
+            }
+        }
+
         // --- 報表渲染 ---
 
         function renderReportPage() {
@@ -273,7 +306,6 @@
             const machine = state.machines.find(m => m.id === state.activeId);
             const machineData = machine.data || {};
 
-            // 讀取當前機台儲存的範圍，若無則預設
             const range1 = machineData.p1_range || "1-24";
             const range3 = machineData.p3_range || "49-72";
 
@@ -451,7 +483,7 @@
                 if (el) handleStatusChange(el, idx, false);
             }
 
-            // 確保所有異動都會觸發儲存
+            // 確保所有異動都會觸發自動儲存 (除了手動按鈕外，變更也會即時存入 localStorage)
             container.querySelectorAll('input, select').forEach(el => {
                 el.addEventListener('change', saveState);
             });
@@ -521,13 +553,6 @@
                     </li>
                 `).join('');
             });
-        }
-
-        function confirmClearAll() {
-            if (confirm('警告：這將徹底清除所有數據！確定要清空嗎？')) {
-                localStorage.removeItem('prodSystemState_v5');
-                location.reload();
-            }
         }
 
         window.onload = () => {
