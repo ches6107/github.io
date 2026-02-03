@@ -221,6 +221,7 @@
         }
 
         function switchMachine(id) {
+            // 先儲存當前機台的數據，包含目前的 Range 選擇
             saveState();
             state.activeId = id;
             renderMachineSelector();
@@ -230,8 +231,20 @@
         function addNewMachine() {
             const name = prompt("請輸入機台名稱 (如 B, C, D):");
             if (!name) return;
+            
+            // 獲取目前頁面上的 Range 選擇，以便新機台繼承
+            const currentP1Range = document.querySelector('[data-field="p1_range"]')?.value || "1-24";
+            const currentP3Range = document.querySelector('[data-field="p3_range"]')?.value || "49-72";
+
             const id = 'm-' + Date.now();
-            state.machines.push({ id, name, data: {} });
+            state.machines.push({ 
+                id, 
+                name, 
+                data: {
+                    p1_range: currentP1Range,
+                    p3_range: currentP3Range
+                } 
+            });
             switchMachine(id);
         }
 
@@ -251,6 +264,7 @@
             const machine = state.machines.find(m => m.id === state.activeId);
             const machineData = machine.data || {};
 
+            // 讀取當前機台儲存的範圍，若無則預設
             const range1 = machineData.p1_range || "1-24";
             const range3 = machineData.p3_range || "49-72";
 
