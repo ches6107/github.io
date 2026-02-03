@@ -171,13 +171,26 @@
         // --- 1. 系統狀態初始化 ---
         const STORAGE_KEY = 'PROD_SYSTEM_FULL_STATE_V1';
 
-        // 預設配置與資料
+        // 根據圖片 image_f14e9d.png 更新的預設配置
         const defaultConfig = {
-            staff: ["C/瑪菈", "C/潘妮達", "A/林宜安", "A/陳美麗", "B/周嘉玟", "B/劉漆琦"],
-            yarn: ["T1D1T", "T1D1U", "T1D1A", "T2D5R", "T2D1M"],
-            testCard: ["無", "白", "紫", "黃黑", "白藍", "橘", "紅"],
-            breakReason: ["毛破", "毛破IP", "IP", "反捲", "無管底紗", "絲束正常", "夾紗", "撞傷"],
-            emptyReason: ["無絲頭", "反捲", "漿疤", "異常卡", "跳停"],
+            staff: [
+                "C/瑪菈", "C/潘妮達", "C/安恰麗", "C/潘娣", "C/蒂帕灣", "C/佩娃", "C/凱魯納",
+                "A/林宜安", "A/陳美麗", "A/洪子惠", "A/阿娜", "A/妮達雅", "A/芭莉恰", "A/蘇西", "A/阿雅", "A/蘇帕嵐",
+                "B/周嘉玟", "B/劉漆琦", "B/安琪琳", "B/阿蓉功", "B/馬妮拉", "B/歐拉莎", "B/萍品茶", "B/梯達拉"
+            ],
+            yarn: [
+                "T1D1T", "T1D1U", "T1D1A", "T1D5C", "T1D5U", "TEE2K", "T2D5R", "T2D1M", "TMD4A", "TMD4D"
+            ],
+            testCard: [
+                "無", "白", "紫", "黃黑", "紫白", "白藍", "橘", "黃", "紅", "粉紅", "紅綠"
+            ],
+            breakReason: [
+                "毛破", "毛破IP", "毛破IP(細)", "IP", "反捲", "反捲IP", "無管底紗", "無絲頭", 
+                "單關巡(夾紗)", "單關巡(凹陷)", "單關巡(凸緣)", "單關巡(管傷)", "絲束正常", "夾紗", "夾廢絲", "鄰錠波及", "撞傷"
+            ],
+            emptyReason: [
+                "無絲頭", "反捲", "漿疤", "氣泡數降A2", "中層紗", "異常卡", "跳停", "單關巡(管傷)"
+            ],
             status: ["", "O", "X"]
         };
 
@@ -194,7 +207,6 @@
         function saveState() {
             const activeMachine = state.machines.find(m => m.id === state.activeId);
             if (activeMachine) {
-                // 遍歷所有帶有 data-field 的元素並存儲其 value
                 document.querySelectorAll('[data-field]').forEach(el => {
                     activeMachine.data[el.getAttribute('data-field')] = el.value;
                 });
@@ -214,7 +226,7 @@
             }, 2000);
         }
 
-        // --- 3. 機台切換邏輯 ---
+        // --- 3. 機台管理邏輯 ---
 
         function renderMachineSelector() {
             const selector = document.getElementById('machineSelector');
@@ -225,7 +237,7 @@
         }
 
         function switchMachine(id) {
-            saveState(); // 切換前保存舊機台
+            saveState();
             state.activeId = id;
             renderMachineSelector();
             renderAllPages();
@@ -234,9 +246,18 @@
         function addNewMachine() {
             const name = prompt("請輸入新機台名稱 (例如: 機台 B):");
             if (!name) return;
+            
             saveState();
             const id = 'm-' + Date.now();
-            state.machines.push({ id, name, data: { p1_range: '1-24', p3_range: '49-72' } });
+            state.machines.push({ 
+                id: id, 
+                name: name, 
+                data: { 
+                    p1_range: '1-24', 
+                    p3_range: '49-72' 
+                } 
+            });
+            
             state.activeId = id;
             saveState();
             renderMachineSelector();
@@ -246,7 +267,7 @@
         function deleteCurrentMachine() {
             if (state.machines.length <= 1) return;
             const current = state.machines.find(m => m.id === state.activeId);
-            if (!confirm(`確定要刪除「${current.name}」的所有數據嗎？此操作不可還原。`)) return;
+            if (!confirm(`確定要刪除「${current.name}」的所有數據嗎？`)) return;
             
             state.machines = state.machines.filter(m => m.id !== state.activeId);
             state.activeId = state.machines[0].id;
@@ -256,9 +277,8 @@
         }
 
         function confirmClearData() {
-            if (confirm("確定要清空此機台表格內手動輸入的所有數值嗎？(選單清單會保留)")) {
+            if (confirm("確定要清空此機台表格內的所有輸入數值嗎？")) {
                 const machine = state.machines.find(m => m.id === state.activeId);
-                // 僅保留結構性設定
                 const p1 = machine.data.p1_range;
                 const p3 = machine.data.p3_range;
                 machine.data = { p1_range: p1, p3_range: p3 };
@@ -280,14 +300,12 @@
             let html = '';
             const pageConfigs = [];
             
-            // 第一區
             if (range1 === "1-48") {
                 pageConfigs.push({ id: 1, start: 1, end: 48, rType: 'p1', canChange: true });
             } else {
                 pageConfigs.push({ id: 1, start: 1, end: 24, rType: 'p1', canChange: true });
                 pageConfigs.push({ id: 2, start: 25, end: 48 });
             }
-            // 第二區
             if (range3 === "49-96") {
                 pageConfigs.push({ id: 3, start: 49, end: 96, rType: 'p3', canChange: true });
             } else {
@@ -397,19 +415,16 @@
 
             container.innerHTML = html;
 
-            // 初始載入原因選單內容
             document.querySelectorAll('.status-trigger').forEach(el => {
                 const idx = el.getAttribute('data-field').split('_')[1];
                 updateReasonCell(el, idx, false);
             });
 
-            // 監聽所有輸入實現自動儲存
             container.querySelectorAll('input, select').forEach(el => {
                 el.addEventListener('input', saveState);
             });
         }
 
-        // 輔助生成選項
         function genOpts(type, selected) {
             return '<option></option>' + state.config[type].map(v => `<option value="${v}" ${selected === v ? 'selected' : ''}>${v}</option>`).join('');
         }
@@ -422,7 +437,7 @@
             const reasonSelect = row.querySelector('.reason-box');
             const status = statusEl.value;
             const machine = state.machines.find(m => m.id === state.activeId);
-            const savedReason = machine.data[`r_${idx}_r`] || '';
+            const savedReason = (machine.data && machine.data[`r_${idx}_r`]) || '';
             
             let list = [];
             if (status === 'O') {
@@ -440,7 +455,7 @@
             if (triggerSave) saveState();
         }
 
-        // --- 5. 設定彈窗管理 ---
+        // --- 5. 設定管理 ---
 
         function openModal() {
             renderConfigUI();
