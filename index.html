@@ -3,25 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>生產記錄管理系統 (正式格式版)</title>
+    <title>生產記錄管理系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { 
             font-family: "Inter", "Noto Sans TC", "微軟正黑體", sans-serif; 
-            background-color: #f1f5f9;
+            background-color: #f8fafc;
             color: #1e293b;
         }
         
-        .page-break {
-            page-break-after: always;
+        /* 報表頁面樣式 */
+        .page-container {
             background: white;
-            padding: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            padding: 20px;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
             width: 100%;
             max-width: 1000px;
-            margin-left: auto;
-            margin-right: auto;
+            margin: 0 auto 40px auto;
+            min-height: 1100px;
+            page-break-after: always;
+            position: relative;
         }
 
         .report-table {
@@ -30,14 +31,13 @@
             border: 1.5px solid #000;
             background: white;
             table-layout: fixed;
-            /* 讓表格在容器中置中 */
             margin-left: auto;
             margin-right: auto;
         }
         
         .report-table th, .report-table td {
             border: 1px solid #000;
-            height: 32px;
+            height: 30px;
             padding: 0;
             vertical-align: middle;
             text-align: center;
@@ -61,31 +61,46 @@
         @media print {
             .no-print { display: none !important; }
             body { background: white; padding: 0; }
-            .page-break {
+            .page-container {
                 box-shadow: none;
                 margin: 0 auto;
-                padding: 5mm;
-                page-break-after: always;
+                padding: 10mm;
                 max-width: none;
+                min-height: auto;
             }
             .report-table { border: 1.5px solid #000; }
         }
 
         .text-left-cell { text-align: left !important; padding-left: 6px !important; }
         
-        .page-watermark {
+        .tab-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #fff;
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .range-select {
+            background-color: #f1f5f9;
+            font-weight: bold;
+            color: #1e40af;
+            cursor: pointer;
+        }
+
+        .watermark {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 80px;
-            color: rgba(0,0,0,0.05);
-            font-weight: bold;
+            font-size: 120px;
+            color: rgba(0, 0, 0, 0.03);
             pointer-events: none;
             z-index: 0;
+            white-space: nowrap;
         }
-        
-        .relative-container { position: relative; }
     </style>
 </head>
 <body class="p-2 sm:p-4">
@@ -93,107 +108,177 @@
     <!-- 設定彈窗 -->
     <div id="settingsModal" class="no-print" style="display: none;">
         <div class="fixed inset-0 bg-black/50 z-[1000] flex items-center justify-center p-4">
-            <div class="bg-white w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden">
+            <div class="bg-white w-full max-w-4xl rounded-xl shadow-2xl overflow-hidden">
                 <div class="p-4 border-b flex justify-between items-center bg-slate-50">
-                    <h2 class="font-bold">選單資料管理</h2>
-                    <button onclick="closeModal()" class="text-2xl">&times;</button>
+                    <h2 class="font-bold text-slate-700">系統選單管理 (已根據圖片更新)</h2>
+                    <button onclick="closeModal()" class="text-2xl hover:text-red-500 transition-colors">&times;</button>
                 </div>
-                <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[70vh] overflow-y-auto">
+                <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 max-h-[75vh] overflow-y-auto">
                     <div class="space-y-2">
-                        <label class="text-xs font-bold text-slate-500 uppercase">昇絲人員</label>
-                        <div class="flex gap-1"><input type="text" id="new_staff" class="border flex-1 px-2 py-1 rounded"><button onclick="addItem('staff')" class="bg-blue-600 text-white px-2 rounded">+</button></div>
-                        <ul id="list_staff" class="border rounded h-24 overflow-y-auto text-sm"></ul>
+                        <label class="text-xs font-bold text-blue-600 uppercase tracking-wider">昇絲人員</label>
+                        <div class="flex gap-1"><input type="text" id="new_staff" class="border flex-1 px-2 py-1 rounded text-sm"><button onclick="addItem('staff')" class="bg-blue-600 text-white px-2 rounded">+</button></div>
+                        <ul id="list_staff" class="border rounded h-48 overflow-y-auto text-sm bg-slate-50"></ul>
                     </div>
                     <div class="space-y-2">
-                        <label class="text-xs font-bold text-slate-500 uppercase">管紗代號</label>
-                        <div class="flex gap-1"><input type="text" id="new_yarn" class="border flex-1 px-2 py-1 rounded"><button onclick="addItem('yarn')" class="bg-blue-600 text-white px-2 rounded">+</button></div>
-                        <ul id="list_yarn" class="border rounded h-24 overflow-y-auto text-sm"></ul>
+                        <label class="text-xs font-bold text-blue-600 uppercase tracking-wider">管紗代號</label>
+                        <div class="flex gap-1"><input type="text" id="new_yarn" class="border flex-1 px-2 py-1 rounded text-sm"><button onclick="addItem('yarn')" class="bg-blue-600 text-white px-2 rounded">+</button></div>
+                        <ul id="list_yarn" class="border rounded h-48 overflow-y-auto text-sm bg-slate-50"></ul>
                     </div>
                     <div class="space-y-2">
-                        <label class="text-xs font-bold text-red-500 uppercase">斷絲原因 (O)</label>
-                        <div class="flex gap-1"><input type="text" id="new_breakReason" class="border flex-1 px-2 py-1 rounded border-red-200"><button onclick="addItem('breakReason')" class="bg-red-600 text-white px-2 rounded">+</button></div>
-                        <ul id="list_breakReason" class="border rounded h-24 overflow-y-auto text-sm"></ul>
+                        <label class="text-xs font-bold text-blue-600 uppercase tracking-wider">試驗卡別 (顏色)</label>
+                        <div class="flex gap-1"><input type="text" id="new_testCard" class="border flex-1 px-2 py-1 rounded text-sm"><button onclick="addItem('testCard')" class="bg-blue-600 text-white px-2 rounded">+</button></div>
+                        <ul id="list_testCard" class="border rounded h-48 overflow-y-auto text-sm bg-slate-50"></ul>
                     </div>
                     <div class="space-y-2">
-                        <label class="text-xs font-bold text-slate-500 uppercase">空錠原因 (X)</label>
-                        <div class="flex gap-1"><input type="text" id="new_emptyReason" class="border flex-1 px-2 py-1 rounded"><button onclick="addItem('emptyReason')" class="bg-slate-700 text-white px-2 rounded">+</button></div>
-                        <ul id="list_emptyReason" class="border rounded h-24 overflow-y-auto text-sm"></ul>
+                        <label class="text-xs font-bold text-red-500 uppercase tracking-wider">斷絲原因 (O)</label>
+                        <div class="flex gap-1"><input type="text" id="new_breakReason" class="border flex-1 px-2 py-1 rounded border-red-200 text-sm"><button onclick="addItem('breakReason')" class="bg-red-600 text-white px-2 rounded">+</button></div>
+                        <ul id="list_breakReason" class="border rounded h-48 overflow-y-auto text-sm bg-slate-50"></ul>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">空錠原因 (X)</label>
+                        <div class="flex gap-1"><input type="text" id="new_emptyReason" class="border flex-1 px-2 py-1 rounded text-sm"><button onclick="addItem('emptyReason')" class="bg-slate-700 text-white px-2 rounded">+</button></div>
+                        <ul id="list_emptyReason" class="border rounded h-48 overflow-y-auto text-sm bg-slate-50"></ul>
                     </div>
                 </div>
                 <div class="p-4 bg-slate-50 border-t text-center">
-                    <button onclick="closeModal()" class="bg-slate-800 text-white px-8 py-2 rounded-lg font-bold">完成並套用</button>
+                    <button onclick="closeModal()" class="bg-slate-800 text-white px-8 py-2 rounded-lg font-bold hover:bg-slate-900 transition-colors">確認套用並儲存</button>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- 工具欄 -->
-    <div class="max-w-[1000px] mx-auto mb-4 no-print flex flex-wrap justify-between items-center bg-white p-4 rounded-lg shadow-sm gap-2">
-        <h1 class="font-bold text-lg flex items-center gap-2">
-            <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-sm">正式版</span> 
-            生產記錄系統
-        </h1>
+    <div class="max-w-[1000px] mx-auto mb-4 no-print flex flex-wrap justify-between items-center bg-white p-4 rounded-lg shadow-sm gap-4 border border-slate-200">
+        
+        <div class="tab-controls">
+            <span class="text-sm font-bold text-slate-500">當前機台：</span>
+            <select id="machineSelector" onchange="switchMachine(this.value)" class="border rounded px-2 py-1 text-sm font-bold bg-slate-50 border-slate-300 min-w-[120px] outline-none focus:border-blue-500">
+            </select>
+            <button onclick="addNewMachine()" class="w-8 h-8 flex items-center justify-center bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 font-bold transition-colors">+</button>
+            <button id="delMachineBtn" onclick="deleteCurrentMachine()" class="w-8 h-8 flex items-center justify-center bg-red-50 text-red-600 rounded-full hover:bg-red-100 font-bold transition-colors">×</button>
+        </div>
+
         <div class="flex gap-2">
-            <button onclick="openModal()" class="border border-slate-300 px-4 py-1.5 rounded-lg text-sm hover:bg-slate-50">設定選單</button>
-            <button onclick="window.print()" class="bg-blue-600 text-white px-5 py-1.5 rounded-lg text-sm font-bold shadow-md hover:bg-blue-700">列印報表 (PDF)</button>
-            <button onclick="confirmClear()" class="text-red-500 text-sm px-2">清空</button>
+            <button onclick="openModal()" class="border border-slate-300 px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">設定選單</button>
+            <button onclick="window.print()" class="bg-blue-600 text-white px-5 py-1.5 rounded-lg text-sm font-bold shadow hover:bg-blue-700 transition-colors">列印報表 (PDF)</button>
+            <button onclick="confirmClearAll()" class="text-red-400 text-xs px-2 hover:text-red-600">清空數據</button>
         </div>
     </div>
 
-    <!-- 報表容器 -->
+    <!-- 報表顯示區域 -->
     <div id="pagesContainer"></div>
 
     <script>
-        let config = JSON.parse(localStorage.getItem('formConfig')) || {
-            staff: ["王小明", "李大華"],
-            yarn: ["代號A", "代號B"],
-            breakReason: ["斷頭", "飄絲", "毛羽"],
-            emptyReason: ["機械故障", "缺料", "保養"],
-            status: ["", "O", "X"]
+        // 初始狀態：根據圖片內容匯入
+        let state = JSON.parse(localStorage.getItem('prodSystemState_v5')) || {
+            activeId: 'm-default',
+            machines: [
+                { id: 'm-default', name: 'A', data: {} }
+            ],
+            config: {
+                staff: [
+                    "C/瑪菈", "C/潘妮達", "C/安恰麗", "C/潘娣", "C/蒂帕灣", "C/佩娃", "C/凱魯納",
+                    "A/林宜安", "A/陳美麗", "A/洪子惠", "A/阿娜", "A/妮達雅", "A/芭莉恰", "A/蘇西", "A/阿雅", "A/蘇帕嵐",
+                    "B/周嘉玟", "B/劉漆琦", "B/安琪琳", "B/阿蓉功", "B/馬妮拉", "B/歐拉莎", "B/萍品荼", "B/梯達拉"
+                ],
+                yarn: ["T1D1T", "T1D1U", "T1D1A", "T1D5C", "T1D5U", "TEE2K", "T2D5R", "T2D1M", "TMD4A", "TMD4D"],
+                testCard: ["無", "白", "紫", "黃黑", "紫白", "白藍", "橘", "黃", "紅", "粉紅", "紅綠"],
+                breakReason: [
+                    "毛破", "毛破IP", "毛破IP (細)", "IP", "反捲", "反捲IP", "無管底紗", "無絲頭", 
+                    "單關巡(夾紗)", "單關巡(凹陷)", "單關巡(凸緣)", "絲束正常", "夾紗", "夾廢絲", "鄰錠波及", "撞傷"
+                ],
+                emptyReason: ["無絲頭", "反捲", "漿疤", "氣泡數降A2", "中層紗", "異常卡", "跳停"],
+                status: ["", "O", "X"]
+            }
         };
 
-        function openModal() { document.getElementById('settingsModal').style.display = 'block'; }
-        function closeModal() { document.getElementById('settingsModal').style.display = 'none'; }
+        // --- 核心邏輯 ---
 
-        function addItem(type) {
-            const input = document.getElementById(`new_${type}`);
-            if (input.value.trim()) {
-                config[type].push(input.value.trim());
-                input.value = '';
-                saveConfig();
+        function saveState() {
+            if (state.activeId) {
+                const currentMachine = state.machines.find(m => m.id === state.activeId);
+                if (currentMachine) {
+                    currentMachine.data = collectCurrentPageData();
+                }
             }
+            localStorage.setItem('prodSystemState_v5', JSON.stringify(state));
         }
 
-        function removeItem(type, index) {
-            config[type].splice(index, 1);
-            saveConfig();
-        }
-
-        function saveConfig() {
-            localStorage.setItem('formConfig', JSON.stringify(config));
-            renderAllPages();
-            renderConfigLists();
-        }
-
-        function renderConfigLists() {
-            ['staff', 'yarn', 'breakReason', 'emptyReason'].forEach(type => {
-                const ul = document.getElementById(`list_${type}`);
-                if (!ul) return;
-                ul.innerHTML = config[type].map((item, index) => `
-                    <li class="flex justify-between items-center px-3 py-1.5 border-b last:border-0">
-                        <span>${item}</span>
-                        <button onclick="removeItem('${type}', ${index})" class="text-red-400 hover:text-red-600">&times;</button>
-                    </li>
-                `).join('');
+        function collectCurrentPageData() {
+            const data = {};
+            document.querySelectorAll('[data-field]').forEach(el => {
+                data[el.getAttribute('data-field')] = el.value;
             });
+            return data;
         }
 
-        function createPageHTML(pageNum, startIdx, endIdx) {
-            return `
-                <div class="page-break relative-container">
-                    <div class="page-watermark">第 ${pageNum} 頁</div>
+        function renderMachineSelector() {
+            const selector = document.getElementById('machineSelector');
+            selector.innerHTML = state.machines.map(m => `
+                <option value="${m.id}" ${m.id === state.activeId ? 'selected' : ''}>${m.name}</option>
+            `).join('');
+            document.getElementById('delMachineBtn').style.display = state.machines.length > 1 ? 'flex' : 'none';
+        }
+
+        function switchMachine(id) {
+            saveState();
+            state.activeId = id;
+            renderMachineSelector();
+            renderReportPage();
+        }
+
+        function addNewMachine() {
+            const name = prompt("請輸入機台名稱 (如 B, C, D):");
+            if (!name) return;
+            const id = 'm-' + Date.now();
+            state.machines.push({ id, name, data: {} });
+            switchMachine(id);
+        }
+
+        function deleteCurrentMachine() {
+            if (!confirm('確定刪除此機台所有記錄嗎？')) return;
+            state.machines = state.machines.filter(m => m.id !== state.activeId);
+            state.activeId = state.machines[0].id;
+            saveState();
+            renderMachineSelector();
+            renderReportPage();
+        }
+
+        // --- 報表渲染 ---
+
+        function renderReportPage() {
+            const container = document.getElementById('pagesContainer');
+            const machine = state.machines.find(m => m.id === state.activeId);
+            const machineData = machine.data || {};
+
+            const range1 = machineData.p1_range || "1-24";
+            const range3 = machineData.p3_range || "49-72";
+
+            let html = '';
+            const pages = [];
+            
+            if (range1 === "1-48") {
+                pages.push({ id: 1, start: 1, end: 48, showRangeSelect: true, rangeType: 'p1' });
+            } else {
+                pages.push({ id: 1, start: 1, end: 24, showRangeSelect: true, rangeType: 'p1' });
+                pages.push({ id: 2, start: 25, end: 48, showRangeSelect: false });
+            }
+
+            if (range3 === "49-96") {
+                pages.push({ id: 3, start: 49, end: 96, showRangeSelect: true, rangeType: 'p3' });
+            } else {
+                pages.push({ id: 3, start: 49, end: 72, showRangeSelect: true, rangeType: 'p3' });
+                pages.push({ id: 4, start: 73, end: 96, showRangeSelect: false });
+            }
+
+            pages.forEach((pageConfig) => {
+                const rowCount = pageConfig.end - pageConfig.start + 1;
+
+                html += `
+                <div class="page-container">
+                    <div class="watermark no-print">第 ${pageConfig.id} 頁</div>
                     
-                    <!-- 頂部區塊 1 -->
+                    <!-- 第一區塊：基本資訊 -->
                     <table class="report-table mb-[-1px]">
                         <tr>
                             <td class="w-[18%] label-bg border-b-0">機台-落絲號</td>
@@ -204,54 +289,97 @@
                             <td class="w-[15%] label-bg border-b-0">錠位範圍</td>
                         </tr>
                         <tr>
-                            <td class="border-t-0"><input type="text" class="cell-input font-bold" placeholder=""></td>
+                            <td class="border-t-0">
+                                <input type="text" class="cell-input font-bold" value="${machine.name}" readonly>
+                            </td>
                             <td class="label-bg">代號</td>
-                            <td><input type="text" class="cell-input"></td>
+                            <td><input type="text" class="cell-input" data-field="code_val" value="${machineData.code_val || ''}"></td>
                             <td class="font-bold text-red-600 text-lg">O</td>
                             <td class="font-bold text-slate-400 text-lg">X</td>
-                            <td class="bg-gray-50 font-medium border-t-0">${startIdx}~${endIdx}</td>
+                            <td class="border-t-0 p-0">
+                                ${pageConfig.showRangeSelect ? `
+                                    <select class="cell-input range-select" data-field="${pageConfig.rangeType}_range" onchange="switchRange()">
+                                        ${pageConfig.rangeType === 'p1' ? `
+                                            <option value="1-24" ${range1 === '1-24' ? 'selected' : ''}>1-24</option>
+                                            <option value="1-48" ${range1 === '1-48' ? 'selected' : ''}>1-48</option>
+                                        ` : `
+                                            <option value="49-72" ${range3 === '49-72' ? 'selected' : ''}>49-72</option>
+                                            <option value="49-96" ${range3 === '49-96' ? 'selected' : ''}>49-96</option>
+                                        `}
+                                    </select>
+                                ` : `
+                                    <div class="bg-gray-100 font-bold h-full flex items-center justify-center">${pageConfig.start}-${pageConfig.end}</div>
+                                `}
+                            </td>
                         </tr>
                         <tr>
                             <td class="label-bg font-bold border-b-0">昇絲人員</td>
-                            <td class="label-bg">落絲數</td>
-                            <td rowspan="2"></td>
-                            <td rowspan="2"></td>
-                            <td rowspan="2"></td>
-                            <td rowspan="2" class="border-t-0"></td>
+                            <td class="label-bg font-bold" rowspan="2">落絲數</td>
+                            <td rowspan="2"><input type="text" class="cell-input" data-field="total_full" value="${machineData.total_full || ''}"></td>
+                            <td rowspan="2"><input type="text" class="cell-input" data-field="total_not_full" value="${machineData.total_not_full || ''}"></td>
+                            <td rowspan="2"><input type="text" class="cell-input" data-field="total_empty" value="${machineData.total_empty || ''}"></td>
+                            <td rowspan="2" class="border-t-0 bg-slate-50"></td>
                         </tr>
                         <tr>
                             <td class="border-t-0">
-                                <select class="cell-input dropdown-staff text-center font-bold w-full h-full"></select>
+                                <select class="cell-input font-bold" data-field="staff_val">
+                                    <option></option>
+                                    ${state.config.staff.map(s => `<option value="${s}" ${machineData.staff_val === s ? 'selected' : ''}>${s}</option>`).join('')}
+                                </select>
                             </td>
-                            <td class="bg-white"></td>
                         </tr>
                     </table>
 
-                    <!-- 頂部區塊 2 -->
+                    <!-- 第二區塊：班別與掛絲資訊 -->
                     <table class="report-table mb-4">
                         <tr class="label-bg">
-                            <td>管紗代號</td>
-                            <td>試驗卡別</td>
-                            <td>紡織班別</td>
-                            <td>中檢班別</td>
-                            <td>掛絲數量</td>
-                            <td>落絲數量</td>
+                            <td style="width:14%">管紗代號</td>
+                            <td style="width:14%">試驗卡別</td>
+                            <td style="width:14%">狀態</td>
+                            <td style="width:14%">紡織班別</td>
+                            <td style="width:14%">中檢班別</td>
+                            <td style="width:15%">掛絲數量</td>
+                            <td style="width:15%">落絲數量</td>
                         </tr>
                         <tr>
-                            <td><select class="cell-input dropdown-yarn"></select></td>
                             <td>
-                                <select class="cell-input">
-                                    <option></option><option>一般</option><option>急件</option><option>測試</option>
+                                <select class="cell-input" data-field="yarn_type">
+                                    <option></option>
+                                    ${state.config.yarn.map(y => `<option value="${y}" ${machineData.yarn_type === y ? 'selected' : ''}>${y}</option>`).join('')}
                                 </select>
                             </td>
                             <td>
-                                <select class="cell-input">
-                                    <option></option><option>甲</option><option>乙</option><option>丙</option>
+                                <select class="cell-input" data-field="test_card">
+                                    <option></option>
+                                    ${state.config.testCard.map(tc => `<option value="${tc}" ${machineData.test_card === tc ? 'selected' : ''}>${tc}</option>`).join('')}
                                 </select>
                             </td>
-                            <td><input type="text" class="cell-input"></td>
-                            <td><input type="text" class="cell-input"></td>
-                            <td><input type="text" class="cell-input"></td>
+                            <td>
+                                <select class="cell-input font-bold" data-field="info_status">
+                                    <option></option>
+                                    <option value="CD" ${machineData.info_status === 'CD' ? 'selected' : ''}>CD</option>
+                                    <option value="BO" ${machineData.info_status === 'BO' ? 'selected' : ''}>BO</option>
+                                    <option value="TTS" ${machineData.info_status === 'TTS' ? 'selected' : ''}>TTS</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select class="cell-input" data-field="work_shift">
+                                    <option></option>
+                                    <option value="A" ${machineData.work_shift === 'A' ? 'selected' : ''}>A</option>
+                                    <option value="B" ${machineData.work_shift === 'B' ? 'selected' : ''}>B</option>
+                                    <option value="C" ${machineData.work_shift === 'C' ? 'selected' : ''}>C</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select class="cell-input" data-field="check_shift">
+                                    <option></option>
+                                    <option value="A" ${machineData.check_shift === 'A' ? 'selected' : ''}>A</option>
+                                    <option value="B" ${machineData.check_shift === 'B' ? 'selected' : ''}>B</option>
+                                    <option value="C" ${machineData.check_shift === 'C' ? 'selected' : ''}>C</option>
+                                </select>
+                            </td>
+                            <td><input type="text" class="cell-input" data-field="hang_qty" value="${machineData.hang_qty || ''}"></td>
+                            <td><input type="text" class="cell-input" data-field="drop_qty" value="${machineData.drop_qty || ''}"></td>
                         </tr>
                     </table>
 
@@ -259,90 +387,129 @@
                     <table class="report-table">
                         <thead>
                             <tr class="label-bg">
-                                <th class="w-[10%]">錠位</th>
-                                <th class="w-[15%]">非滿管 O、空錠 X</th>
-                                <th class="w-[10%]">紡位</th>
-                                <th class="w-[15%]">米長</th>
+                                <th class="w-[10%]">錠位</th><th class="w-[15%]">非滿管 O、空錠 X</th>
+                                <th class="w-[10%]">紡位</th><th class="w-[15%]">米長</th>
                                 <th class="text-left-cell">斷絲、空錠原因</th>
                             </tr>
                         </thead>
-                        <tbody id="tableBody_${pageNum}"></tbody>
+                        <tbody>
+                            ${Array.from({length: rowCount}, (_, i) => pageConfig.start + i).map(idx => `
+                                <tr>
+                                    <td class="label-bg font-bold text-slate-500">${idx}</td>
+                                    <td>
+                                        <select class="cell-input font-bold status-select" 
+                                                data-field="row_${idx}_status" 
+                                                onchange="handleStatusChange(this, ${idx})">
+                                            ${state.config.status.map(v => `<option value="${v}" ${machineData[`row_${idx}_status`] === v ? 'selected' : ''}>${v}</option>`).join('')}
+                                        </select>
+                                    </td>
+                                    <td><input type="text" class="cell-input" data-field="row_${idx}_pos" value="${machineData[`row_${idx}_pos`] || ''}"></td>
+                                    <td><input type="text" class="cell-input" data-field="row_${idx}_len" value="${machineData[`row_${idx}_len`] || ''}"></td>
+                                    <td class="text-left-cell">
+                                        <select class="cell-input text-left-cell reason-select" data-field="row_${idx}_reason">
+                                        </select>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
                     </table>
-                    
-                    <div class="mt-4 text-right text-xs text-slate-400 no-print">
-                        製表日期：${new Date().toLocaleDateString()}
+                    <div class="mt-4 flex justify-between items-center text-xs text-slate-400">
+                        <span>機台：${machine.name} | 錠位範疇：${pageConfig.start}~${pageConfig.end}</span>
+                        <span>製表日期：${new Date().toLocaleDateString()}</span>
                     </div>
                 </div>
-            `;
-        }
-
-        function renderAllPages() {
-            const container = document.getElementById('pagesContainer');
-            container.innerHTML = '';
-            
-            const pageRanges = [
-                { p: 1, s: 1, e: 24 },
-                { p: 2, s: 25, e: 48 },
-                { p: 3, s: 49, e: 72 },
-                { p: 4, s: 73, e: 96 }
-            ];
-
-            pageRanges.forEach(range => {
-                container.innerHTML += createPageHTML(range.p, range.s, range.e);
-                const tbody = document.getElementById(`tableBody_${range.p}`);
-                
-                for (let i = range.s; i <= range.e; i++) {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td class="label-bg font-bold text-slate-600">${i}</td>
-                        <td>
-                            <select class="cell-input status-select font-bold" onchange="handleStatusChange(this)">
-                                ${config.status.map(v => `<option value="${v}">${v}</option>`).join('')}
-                            </select>
-                        </td>
-                        <td><input type="text" class="cell-input"></td>
-                        <td><input type="text" class="cell-input"></td>
-                        <td class="text-left-cell">
-                            <select class="cell-input text-left-cell reason-select"></select>
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
-                }
+                `;
             });
 
-            document.querySelectorAll('.dropdown-staff').forEach(s => updateSelect(s, config.staff));
-            document.querySelectorAll('.dropdown-yarn').forEach(s => updateSelect(s, config.yarn));
+            container.innerHTML = html;
+
+            for (let idx = 1; idx <= 96; idx++) {
+                const el = document.querySelector(`[data-field="row_${idx}_status"]`);
+                if (el) handleStatusChange(el, idx, false);
+            }
+
+            container.querySelectorAll('input, select').forEach(el => {
+                el.addEventListener('change', saveState);
+            });
         }
 
-        function handleStatusChange(statusSelect) {
+        function switchRange() {
+            saveState();
+            renderReportPage();
+        }
+
+        function handleStatusChange(statusSelect, idx, shouldSave = true) {
             const row = statusSelect.closest('tr');
+            if (!row) return;
             const reasonSelect = row.querySelector('.reason-select');
             const status = statusSelect.value;
+            const machine = state.machines.find(m => m.id === state.activeId);
+            const savedReason = machine.data[`row_${idx}_reason`] || '';
             
             let options = ['<option value=""></option>'];
-            let list = (status === 'O') ? config.breakReason : (status === 'X' ? config.emptyReason : []);
-            list.forEach(r => options.push(`<option value="${r}">${r}</option>`));
+            let list = (status === 'O') ? state.config.breakReason : (status === 'X' ? state.config.emptyReason : []);
+            list.forEach(r => options.push(`<option value="${r}" ${savedReason === r ? 'selected' : ''}>${r}</option>`));
             
             reasonSelect.innerHTML = options.join('');
             
             if (status === 'O') statusSelect.style.color = '#ef4444';
             else if (status === 'X') statusSelect.style.color = '#94a3b8';
             else statusSelect.style.color = '#000';
+
+            if (shouldSave) saveState();
         }
 
-        function updateSelect(el, items) {
-            const currentVal = el.value;
-            el.innerHTML = '<option value=""></option>' + items.map(item => `<option value="${item}" ${item === currentVal ? 'selected' : ''}>${item}</option>`).join('');
+        // --- 設定管理 ---
+
+        function openModal() { 
+            renderConfigLists();
+            document.getElementById('settingsModal').style.display = 'block'; 
+        }
+        function closeModal() { 
+            document.getElementById('settingsModal').style.display = 'none'; 
+            renderReportPage();
         }
 
-        function confirmClear() {
-            if (confirm('確定清空所有數據嗎？')) {
-                renderAllPages();
+        function addItem(type) {
+            const input = document.getElementById(`new_${type}`);
+            if (input.value.trim()) {
+                state.config[type].push(input.value.trim());
+                input.value = '';
+                saveState();
+                renderConfigLists();
             }
         }
 
-        renderConfigLists();
-        renderAllPages();
+        function removeItem(type, index) {
+            state.config[type].splice(index, 1);
+            saveState();
+            renderConfigLists();
+        }
+
+        function renderConfigLists() {
+            ['staff', 'yarn', 'testCard', 'breakReason', 'emptyReason'].forEach(type => {
+                const ul = document.getElementById(`list_${type}`);
+                if (!ul) return;
+                ul.innerHTML = state.config[type].map((item, index) => `
+                    <li class="flex justify-between items-center px-3 py-1.5 border-b last:border-0 hover:bg-white transition-colors">
+                        <span>${item}</span>
+                        <button onclick="removeItem('${type}', ${index})" class="text-red-400 hover:text-red-600">&times;</button>
+                    </li>
+                `).join('');
+            });
+        }
+
+        function confirmClearAll() {
+            if (confirm('警告：這將徹底清除所有數據！確定要清空嗎？')) {
+                localStorage.removeItem('prodSystemState_v5');
+                location.reload();
+            }
+        }
+
+        window.onload = () => {
+            renderMachineSelector();
+            renderReportPage();
+        };
     </script>
 </body>
 </html>
