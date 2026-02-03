@@ -198,6 +198,7 @@
             if (state.activeId) {
                 const currentMachine = state.machines.find(m => m.id === state.activeId);
                 if (currentMachine) {
+                    // 關鍵修改：切換前確保把目前畫面上所有 input/select 的值都收集起來
                     currentMachine.data = collectCurrentPageData();
                 }
             }
@@ -206,6 +207,7 @@
 
         function collectCurrentPageData() {
             const data = {};
+            // 抓取頁面上所有帶有 data-field 的元素，包含隱藏頁面的 input
             document.querySelectorAll('[data-field]').forEach(el => {
                 data[el.getAttribute('data-field')] = el.value;
             });
@@ -221,7 +223,7 @@
         }
 
         function switchMachine(id) {
-            // 先儲存當前機台的數據，包含目前的 Range 選擇
+            // 切換前，先完整儲存當前機台頁面的所有變動
             saveState();
             state.activeId = id;
             renderMachineSelector();
@@ -229,10 +231,13 @@
         }
 
         function addNewMachine() {
-            const name = prompt("請輸入機台名稱 (如 B, C, D):");
+            const name = prompt("請輸入新機台名稱 (例如 B, C):");
             if (!name) return;
             
-            // 獲取目前頁面上的 Range 選擇，以便新機台繼承
+            // 建立新機台前，先儲存舊機台當前狀態
+            saveState();
+
+            // 抓取當前頁面的範圍設定，讓新機台預設繼承相同頁面視角
             const currentP1Range = document.querySelector('[data-field="p1_range"]')?.value || "1-24";
             const currentP3Range = document.querySelector('[data-field="p3_range"]')?.value || "49-72";
 
@@ -245,7 +250,11 @@
                     p3_range: currentP3Range
                 } 
             });
-            switchMachine(id);
+            
+            state.activeId = id;
+            saveState();
+            renderMachineSelector();
+            renderReportPage();
         }
 
         function deleteCurrentMachine() {
@@ -442,6 +451,7 @@
                 if (el) handleStatusChange(el, idx, false);
             }
 
+            // 確保所有異動都會觸發儲存
             container.querySelectorAll('input, select').forEach(el => {
                 el.addEventListener('change', saveState);
             });
