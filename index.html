@@ -219,6 +219,17 @@
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         }
 
+        /**
+         * 處理機台內資料連動
+         */
+        function handleStaffSync(val) {
+            // 在同一機台的所有頁面同步人員資料
+            document.querySelectorAll('[data-field^="staff_"]').forEach(el => {
+                el.value = val;
+            });
+            saveState();
+        }
+
         // --- 3. 機台管理邏輯 ---
 
         function renderMachineSelector() {
@@ -297,6 +308,9 @@
 
             pageConfigs.forEach(pg => {
                 const count = pg.end - pg.start + 1;
+                // 讀取同步的人員值（如果有的話，使用第一個發現的人員值作為機台預設）
+                const currentStaff = mData['staff_1'] || mData['staff_2'] || mData['staff_3'] || mData['staff_4'] || '';
+
                 html += `
                 <div class="page-container">
                     <div class="watermark no-print">第 ${pg.id} 頁</div>
@@ -340,9 +354,9 @@
                         </tr>
                         <tr>
                             <td>
-                                <select class="cell-input font-bold" data-field="staff_${pg.id}">
+                                <select class="cell-input font-bold" data-field="staff_${pg.id}" onchange="handleStaffSync(this.value)">
                                     <option></option>
-                                    ${state.config.staff.map(s => `<option value="${s}" ${mData['staff_'+pg.id] === s ? 'selected' : ''}>${s}</option>`).join('')}
+                                    ${state.config.staff.map(s => `<option value="${s}" ${currentStaff === s ? 'selected' : ''}>${s}</option>`).join('')}
                                 </select>
                             </td>
                         </tr>
@@ -403,7 +417,9 @@
             });
 
             container.querySelectorAll('input, select').forEach(el => {
-                el.addEventListener('input', saveState);
+                if (!el.getAttribute('data-field').startsWith('staff_')) {
+                    el.addEventListener('input', saveState);
+                }
             });
         }
 
