@@ -3,323 +3,401 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>生產紀錄系統 - 完整同步版</title>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <title>紡織生產記錄表單 - 數位管理版</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script type="text/javascript" src="https://www.gstatic.com/firebasejs/11.1.0/firebase-app-compat.js"></script>
-    <script type="text/javascript" src="https://www.gstatic.com/firebasejs/11.1.0/firebase-auth-compat.js"></script>
-    <script type="text/javascript" src="https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore-compat.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Noto Sans TC', sans-serif; }
-        @media print { .no-print { display: none !important; } }
-        .custom-scroll::-webkit-scrollbar { width: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        body { 
+            font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; 
+            background-color: #f3f4f6;
+        }
+        
+        .custom-table {
+            border: 1.5px solid #000;
+            border-collapse: collapse;
+            width: 100%;
+            background: white;
+        }
+        
+        .custom-table td {
+            border: 1px solid #000;
+            height: 34px;
+            padding: 0;
+            position: relative;
+        }
+
+        .no-border-b { border-bottom: none !important; }
+        .no-border-t { border-top: none !important; }
+
+        .input-cell {
+            width: 100%;
+            height: 100%;
+            border: none;
+            outline: none;
+            background: transparent;
+            text-align: center;
+            font-size: 14px;
+            appearance: none;
+        }
+
+        select.input-cell {
+            cursor: pointer;
+            padding: 0 5px;
+        }
+
+        .label-text {
+            font-size: 13px;
+            text-align: center;
+            display: block;
+            width: 100%;
+            font-weight: bold;
+        }
+
+        /* 彈窗樣式 */
+        #settingsModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 50;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 900px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        @media print {
+            .no-print { display: none !important; }
+            body { padding: 0; background: white; }
+            .container { max-width: 100%; width: 100%; box-shadow: none; padding: 0; margin: 0; }
+            .custom-table { border-width: 2px; }
+            select { appearance: none; -webkit-appearance: none; }
+        }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900">
-    <div id="root"></div>
+<body class="p-4 md:p-8">
 
-    <script type="text/babel">
-        const { useState, useEffect, useCallback, useRef } = React;
-
-        // --- 配置與常數 ---
-        const firebaseConfig = { apiKey: "", authDomain: "", projectId: "", storageBucket: "", messagingSenderId: "", appId: "" };
-        const config = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
-        
-        // 確保只初始化一次
-        if (!firebase.apps.length) {
-            firebase.initializeApp(config);
-        }
-        
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'production-record-v1';
-
-        const FIXED_RANGES = ['1-24', '25-48', '49-72', '73-96', '1-48', '49-96'];
-        const UNIT_IDS = ['1', '2', '3', '4'];
-        const PAGES = Array.from({ length: 10 }, (_, i) => (i + 1).toString());
-
-        const getDefaultRange = (id) => {
-            if (id === '1') return '1-24';
-            if (id === '2') return '25-48';
-            if (id === '3') return '49-72';
-            if (id === '4') return '73-96';
-            return '1-48';
-        };
-
-        const getEmptyGroup = (id) => ({
-            header: { doffFull: '', doffNotFull: '', doffEmpty: '', doffRange: getDefaultRange(id) },
-            batch: { tubeCode: '', testCard: '', cdBoTts: '', spinShift: '', inspShift: '', hangCount: '', doffQty: '' },
-            rows: {}
-        });
-
-        // --- 子組件：機器單元 ---
-        const MachineUnit = ({ id, groupData, sharedHeader, options, onUpdate, onSharedUpdate }) => {
-            if (!groupData) return null;
-            const rangeStr = groupData.header.doffRange || getDefaultRange(id);
-            const match = rangeStr.match(/(\d+)[-~](\d+)/);
-            const start = match ? parseInt(match[1]) : 1;
-            const end = match ? parseInt(match[2]) : 48;
-            const count = end - start + 1;
-
-            const updateH = (f, v) => onUpdate(id, { ...groupData, header: { ...groupData.header, [f]: v } });
-            const updateB = (f, v) => onUpdate(id, { ...groupData, batch: { ...groupData.batch, [f]: v } });
+    <!-- 齒輪設定彈窗 -->
+    <div id="settingsModal" class="no-print">
+        <div class="modal-content shadow-2xl">
+            <div class="flex justify-between items-center mb-6 border-b pb-4">
+                <h2 class="text-xl font-bold flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    清單內容管理設定
+                </h2>
+                <button onclick="closeModal()" class="text-gray-500 hover:text-black">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
             
-            const updateR = (idx, f, v) => {
-                const newData = { ...groupData };
-                if (!newData.rows) newData.rows = {};
-                if (!newData.rows[rangeStr]) newData.rows[rangeStr] = [];
-                const rows = [...newData.rows[rangeStr]];
-                while (rows.length <= idx) rows.push({ status: '', spinPos: '', length: '', reason: '' });
-                rows[idx] = { ...rows[idx], [f]: v };
-                if (f === 'status') rows[idx].reason = '';
-                newData.rows[rangeStr] = rows;
-                onUpdate(id, newData);
-            };
-
-            const displayRows = Array.from({ length: count }, (_, i) => {
-                const r = (groupData.rows[rangeStr] || [])[i] || { status: '', spinPos: '', length: '', reason: '' };
-                return { id: start + i, index: i, ...r };
-            });
-
-            return (
-                <div className="bg-white shadow-md rounded-2xl mb-8 border-l-4 border-blue-600 overflow-hidden">
-                    <div className="p-4 bg-slate-50 border-b flex justify-between items-center">
-                        <h3 className="text-xl font-black text-slate-700">單元 {id}</h3>
-                        <span className="text-xs font-bold text-slate-400">範圍: {rangeStr}</span>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- 昇絲人員管理 -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <label class="block font-bold mb-2 border-b border-gray-300 pb-1">昇絲人員</label>
+                    <div class="flex gap-2 mb-3">
+                        <input type="text" id="new_staff" class="border rounded px-2 py-1 text-sm flex-grow" placeholder="姓名">
+                        <button onclick="addItem('staff')" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 font-bold">+</button>
                     </div>
-                    
-                    <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 border-b">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-blue-600">機台/人員</label>
-                            <div className="flex gap-2">
-                                <input placeholder="機台號" className="w-1/2 p-2 border rounded bg-blue-50/30" value={sharedHeader.machineNo} onChange={e => onSharedUpdate('machineNo', e.target.value)} />
-                                <select className="w-1/2 p-2 border rounded" value={sharedHeader.personnel} onChange={e => onSharedUpdate('personnel', e.target.value)}>
-                                    <option value="">人員</option>
-                                    {options.personnel.map(o => <option key={o} value={o}>{o}</option>)}
-                                </select>
-                            </div>
-                        </div>
-                        <div className="md:col-span-2 grid grid-cols-4 gap-2">
-                            <div><label className="text-[10px] font-bold text-gray-400">滿管</label><input className="w-full p-2 border rounded" value={groupData.header.doffFull} onChange={e => updateH('doffFull', e.target.value)} /></div>
-                            <div><label className="text-[10px] font-bold text-gray-400">未滿</label><input className="w-full p-2 border rounded" value={groupData.header.doffNotFull} onChange={e => updateH('doffNotFull', e.target.value)} /></div>
-                            <div><label className="text-[10px] font-bold text-gray-400">空管</label><input className="w-full p-2 border rounded" value={groupData.header.doffEmpty} onChange={e => updateH('doffEmpty', e.target.value)} /></div>
-                            <div><label className="text-[10px] font-bold text-blue-600">設定範圍</label>
-                                <select className="w-full p-2 border rounded bg-blue-50/50" value={rangeStr} onChange={e => updateH('doffRange', e.target.value)}>
-                                    {FIXED_RANGES.map(r => <option key={r} value={r}>{r}</option>)}
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="p-4 overflow-x-auto">
-                        <table className="w-full text-xs text-center border">
-                            <thead className="bg-slate-100">
-                                <tr>
-                                    <th className="p-2 border">管紗</th><th className="p-2 border">試驗卡</th>
-                                    <th className="p-2 border">類型</th><th className="p-2 border">紡/檢班</th>
-                                    <th className="p-2 border">掛絲/落絲</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td className="p-1 border"><input className="w-full text-center" value={groupData.batch.tubeCode} onChange={e => updateB('tubeCode', e.target.value)} /></td>
-                                    <td className="p-1 border"><input className="w-full text-center" value={groupData.batch.testCard} onChange={e => updateB('testCard', e.target.value)} /></td>
-                                    <td className="p-1 border"><select className="w-full" value={groupData.batch.cdBoTts} onChange={e => updateB('cdBoTts', e.target.value)}><option value="">-</option>{options.cdBoTts.map(o => <option key={o} value={o}>{o}</option>)}</select></td>
-                                    <td className="p-1 border flex">
-                                        <input className="w-1/2 text-center border-r" value={groupData.batch.spinShift} onChange={e => updateB('spinShift', e.target.value)} />
-                                        <input className="w-1/2 text-center" value={groupData.batch.inspShift} onChange={e => updateB('inspShift', e.target.value)} />
-                                    </td>
-                                    <td className="p-1 border">
-                                        <input className="w-1/2 text-center border-r" value={groupData.batch.hangCount} onChange={e => updateB('hangCount', e.target.value)} />
-                                        <input className="w-1/2 text-center font-bold text-blue-600" value={groupData.batch.doffQty} onChange={e => updateB('doffQty', e.target.value)} />
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div className="mx-4 mb-4 border rounded overflow-hidden">
-                        <div className="grid grid-cols-12 bg-slate-800 text-white text-[10px] py-1 text-center font-bold">
-                            <div className="col-span-1">錠</div><div className="col-span-2">狀態</div><div className="col-span-2">紡位</div><div className="col-span-2">米長</div><div className="col-span-5">原因說明</div>
-                        </div>
-                        <div className="max-h-60 overflow-y-auto custom-scroll">
-                            {displayRows.map(r => (
-                                <div key={r.id} className="grid grid-cols-12 border-t text-xs h-8 items-center text-center">
-                                    <div className="col-span-1 bg-slate-50 font-bold border-r h-full flex items-center justify-center">{r.id}</div>
-                                    <div className="col-span-2 border-r h-full">
-                                        <select className="w-full h-full outline-none" value={r.status} onChange={e => updateR(r.index, 'status', e.target.value)}>
-                                            <option value="">-</option><option value="O">O (斷)</option><option value="X">X (空)</option>
-                                        </select>
-                                    </div>
-                                    <div className="col-span-2 border-r h-full"><input className="w-full h-full text-center" value={r.spinPos} onChange={e => updateR(r.index, 'spinPos', e.target.value)} /></div>
-                                    <div className="col-span-2 border-r h-full"><input className="w-full h-full text-center" value={r.length} onChange={e => updateR(r.index, 'length', e.target.value)} /></div>
-                                    <div className="col-span-5 h-full">
-                                        <select className="w-full h-full text-[10px] px-1" value={r.reason} onChange={e => updateR(r.index, 'reason', e.target.value)}>
-                                            <option value="">選擇原因...</option>
-                                            {(r.status === 'O' ? options.breakReason : (r.status === 'X' ? options.emptyReason : [])).map(o => <option key={o} value={o}>{o}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                    <ul id="list_staff" class="text-sm h-32 overflow-y-auto bg-white border rounded"></ul>
                 </div>
-            );
+                <!-- 管紗代號管理 -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <label class="block font-bold mb-2 border-b border-gray-300 pb-1">管紗代號</label>
+                    <div class="flex gap-2 mb-3">
+                        <input type="text" id="new_yarn" class="border rounded px-2 py-1 text-sm flex-grow" placeholder="代號">
+                        <button onclick="addItem('yarn')" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 font-bold">+</button>
+                    </div>
+                    <ul id="list_yarn" class="text-sm h-32 overflow-y-auto bg-white border rounded"></ul>
+                </div>
+                <!-- 試驗卡別管理 -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <label class="block font-bold mb-2 border-b border-gray-300 pb-1">試驗卡別</label>
+                    <div class="flex gap-2 mb-3">
+                        <input type="text" id="new_card" class="border rounded px-2 py-1 text-sm flex-grow" placeholder="名稱">
+                        <button onclick="addItem('card')" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 font-bold">+</button>
+                    </div>
+                    <ul id="list_card" class="text-sm h-32 overflow-y-auto bg-white border rounded"></ul>
+                </div>
+                <!-- 斷絲原因管理 (對應 O) -->
+                <div class="bg-red-50 p-4 rounded-lg border border-red-100">
+                    <label class="block font-bold mb-2 border-b border-red-300 pb-1 text-red-700">斷絲原因 (狀態 O 時顯示)</label>
+                    <div class="flex gap-2 mb-3">
+                        <input type="text" id="new_breakReason" class="border rounded px-2 py-1 text-sm flex-grow" placeholder="原因">
+                        <button onclick="addItem('breakReason')" class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 font-bold">+</button>
+                    </div>
+                    <ul id="list_breakReason" class="text-sm h-32 overflow-y-auto bg-white border rounded"></ul>
+                </div>
+                <!-- 空錠原因管理 (對應 X) -->
+                <div class="bg-slate-100 p-4 rounded-lg border border-slate-200">
+                    <label class="block font-bold mb-2 border-b border-slate-300 pb-1 text-slate-700">空錠原因 (狀態 X 時顯示)</label>
+                    <div class="flex gap-2 mb-3">
+                        <input type="text" id="new_emptyReason" class="border rounded px-2 py-1 text-sm flex-grow" placeholder="原因">
+                        <button onclick="addItem('emptyReason')" class="bg-slate-600 text-white px-3 py-1 rounded hover:bg-slate-700 font-bold">+</button>
+                    </div>
+                    <ul id="list_emptyReason" class="text-sm h-32 overflow-y-auto bg-white border rounded"></ul>
+                </div>
+            </div>
+            
+            <div class="mt-8 flex justify-center">
+                <button onclick="closeModal()" class="bg-slate-800 text-white px-10 py-2 rounded-lg hover:bg-black transition font-bold">完成設定</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-5xl mx-auto container">
+        
+        <div class="bg-white p-8 shadow-xl relative min-h-[1000px]">
+            <!-- 右上角工具列 -->
+            <div class="absolute top-4 right-8 flex gap-4 no-print items-center">
+                <button onclick="openModal()" class="text-gray-400 hover:text-blue-600 transition p-1" title="設定選單內容">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </button>
+                <div class="flex gap-2">
+                    <button onclick="window.print()" class="bg-black text-white px-4 py-1.5 rounded text-sm hover:bg-gray-800 transition">列印表單</button>
+                    <button onclick="confirmClear()" class="border border-black text-black px-4 py-1.5 rounded text-sm hover:bg-gray-100 transition">清空資料</button>
+                </div>
+            </div>
+
+            <div class="pt-8" id="printableContent">
+                <!-- 頂部複合表格 -->
+                <table class="custom-table mb-6">
+                    <tr>
+                        <td class="w-28"><span class="label-text">機台-落絲號</span></td>
+                        <td class="w-32"><input type="text" class="input-cell"></td>
+                        <td class="w-24"><span class="label-text">項目</span></td>
+                        <td class="w-24"><span class="label-text">滿管</span></td>
+                        <td class="w-24"><span class="label-text">未滿管</span></td>
+                        <td class="w-24"><span class="label-text">空錠</span></td>
+                        <td class="w-24"><span class="label-text">錠位範圍</span></td>
+                    </tr>
+                    <tr>
+                        <td class="no-border-b"></td>
+                        <td class="no-border-b"></td>
+                        <td><span class="label-text">代號</span></td>
+                        <td><input type="text" class="input-cell"></td>
+                        <td><span class="label-text">O</span></td>
+                        <td><span class="label-text">X</span></td>
+                        <td><span class="label-text">1~24</span></td>
+                    </tr>
+                    <tr>
+                        <td class="no-border-t"><span class="label-text">昇絲人員</span></td>
+                        <td class="no-border-t">
+                            <select class="input-cell dropdown-staff"></select>
+                        </td>
+                        <td><span class="label-text">落絲數</span></td>
+                        <td><input type="text" class="input-cell"></td>
+                        <td><input type="text" class="input-cell"></td>
+                        <td><input type="text" class="input-cell"></td>
+                        <td><input type="text" class="input-cell"></td>
+                    </tr>
+                    <tr class="h-6">
+                        <td colspan="7" class="border-l-0 border-r-0"></td>
+                    </tr>
+                </table>
+
+                <!-- 中間參數表格 -->
+                <table class="custom-table mb-6">
+                    <tr class="bg-gray-50/50">
+                        <td class="w-1/6"><span class="label-text">管紗代號</span></td>
+                        <td class="w-1/6"><span class="label-text">試驗卡別</span></td>
+                        <td class="w-1/6"><span class="label-text">紡織班別</span></td>
+                        <td class="w-1/6"><span class="label-text">中檢班別</span></td>
+                        <td class="w-1/6"><span class="label-text">掛絲數量</span></td>
+                        <td class="w-1/6"><span class="label-text">落絲數量</span></td>
+                    </tr>
+                    <tr>
+                        <td><select class="input-cell dropdown-yarn"></select></td>
+                        <td><select class="input-cell dropdown-card"></select></td>
+                        <td>
+                            <select class="input-cell">
+                                <option value=""></option><option>甲</option><option>乙</option><option>丙</option>
+                            </select>
+                        </td>
+                        <td>
+                            <select class="input-cell">
+                                <option value=""></option><option>甲</option><option>乙</option><option>丙</option>
+                            </select>
+                        </td>
+                        <td><input type="text" class="input-cell"></td>
+                        <td><input type="text" class="input-cell"></td>
+                    </tr>
+                </table>
+
+                <!-- 下方 24 錠明細表格 -->
+                <table class="custom-table">
+                    <thead>
+                        <tr class="bg-gray-50/50">
+                            <td class="w-16"><span class="label-text">錠位</span></td>
+                            <td class="w-44"><span class="label-text">非滿管 O、空錠 X</span></td>
+                            <td class="w-24"><span class="label-text">紡位</span></td>
+                            <td class="w-24"><span class="label-text">米長</span></td>
+                            <td><span class="label-text text-left px-4">原因 (根據 O/X 切換內容)</span></td>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+
+                <!-- 頁碼浮水印 -->
+                <div class="mt-8 text-center select-none">
+                    <span class="text-6xl font-bold text-gray-200 tracking-widest italic">第 1 頁</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 初始化選項資料
+        let config = JSON.parse(localStorage.getItem('formConfig')) || {
+            staff: ["王小明", "李阿華"],
+            yarn: ["A100", "B200", "C300"],
+            card: ["一般", "急件", "測試"],
+            breakReason: ["斷頭", "飄絲", "毛羽過多"],
+            emptyReason: ["機械故障", "原料短缺", "計畫性停機"],
+            status: ["", "O", "X"]
         };
 
-        // --- 主程式 ---
-        function App() {
-            const [user, setUser] = useState(null);
-            const [activePage, setActivePage] = useState('1');
-            const [allGroups, setAllGroups] = useState({});
-            const [sharedHeader, setSharedHeader] = useState({ machineNo: '', personnel: '' });
-            const [saveStatus, setSaveStatus] = useState('idle');
-
-            const options = {
-                personnel: ['管理員', '領班', '操作員'],
-                cdBoTts: ['CD', 'BO', 'TTS'],
-                breakReason: ['原紗斷', '繞軸', '人為', '機械'],
-                emptyReason: ['維修', '清潔', '待料']
-            };
-
-            // 處理登入
-            useEffect(() => {
-                const login = async () => {
-                    try {
-                        const token = typeof __initial_auth_token !== 'undefined' && __initial_auth_token ? __initial_auth_token : null;
-                        if (token) {
-                            await auth.signInWithCustomToken(token);
-                        } else {
-                            await auth.signInAnonymously();
-                        }
-                    } catch (e) { 
-                        console.error("Auth Error:", e); 
-                    }
-                };
-                login();
-                const unsubscribe = auth.onAuthStateChanged(u => {
-                    setUser(u);
-                });
-                return () => unsubscribe();
-            }, []);
-
-            // 監聽資料
-            useEffect(() => {
-                if (!user) return;
-                
-                // 修正路徑確保符合 Rule 1
-                const path = `artifacts/${appId}/public/data/pages/page_${activePage}`;
-                
-                const unsubscribe = db.doc(path).onSnapshot(snap => {
-                    // 修正關鍵錯誤：在 compat 版本中 snap.exists 是一個屬性，有時在某些環境下 snap 物件結構不同
-                    const exists = typeof snap.exists === 'function' ? snap.exists() : snap.exists;
-                    
-                    if (exists) {
-                        const d = snap.data();
-                        setAllGroups(d.allGroups || {});
-                        setSharedHeader(d.sharedHeader || { machineNo: '', personnel: '' });
-                    } else {
-                        const init = {}; 
-                        UNIT_IDS.forEach(id => init[id] = getEmptyGroup(id));
-                        setAllGroups(init);
-                        setSharedHeader({ machineNo: '', personnel: '' });
-                    }
-                }, err => {
-                    console.error("Firestore Snapshot Error:", err);
-                });
-                
-                return () => unsubscribe();
-            }, [user, activePage]);
-
-            const saveData = useCallback(async (groups, header) => {
-                if (!user) return;
-                setSaveStatus('saving');
-                try {
-                    await db.doc(`artifacts/${appId}/public/data/pages/page_${activePage}`).set({
-                        allGroups: groups || allGroups,
-                        sharedHeader: header || sharedHeader,
-                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    setSaveStatus('success');
-                    setTimeout(() => setSaveStatus('idle'), 2000);
-                } catch (e) { 
-                    console.error("Save Error:", e);
-                    setSaveStatus('error'); 
-                }
-            }, [user, activePage, allGroups, sharedHeader]);
-
-            const onUpdateGroup = (id, data) => {
-                const next = { ...allGroups, [id]: data };
-                setAllGroups(next);
-                saveData(next, sharedHeader);
-            };
-
-            const onUpdateShared = (f, v) => {
-                const next = { ...sharedHeader, [f]: v };
-                setSharedHeader(next);
-                saveData(allGroups, next);
-            };
-
-            const clearPage = () => {
-                if (window.confirm(`確定要清空第 ${activePage} 工作站的所有資料嗎？`)) {
-                    const init = {}; UNIT_IDS.forEach(id => init[id] = getEmptyGroup(id));
-                    setAllGroups(init);
-                    setSharedHeader({ machineNo: '', personnel: '' });
-                    saveData(init, { machineNo: '', personnel: '' });
-                }
-            };
-
-            return (
-                <div className="max-w-4xl mx-auto p-4 pb-20">
-                    <header className="sticky top-0 bg-white/90 backdrop-blur shadow-sm z-50 p-3 rounded-b-2xl mb-6 flex justify-between items-center no-print">
-                        <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold">R</div>
-                            <h1 className="font-black text-lg">生產紀錄</h1>
-                        </div>
-                        <div className="flex gap-1 bg-slate-100 p-1 rounded-lg overflow-x-auto max-w-[60%]">
-                            {PAGES.map(p => (
-                                <button key={p} onClick={() => setActivePage(p)} className={`px-3 py-1 rounded text-sm font-bold transition flex-shrink-0 ${activePage === p ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-white'}`}>
-                                    {p}
-                                </button>
-                            ))}
-                        </div>
-                    </header>
-
-                    <div className="flex justify-between items-end mb-6 px-2">
-                        <div>
-                            <h2 className="text-3xl font-black text-slate-800">工作站 {activePage}</h2>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                {!user ? '⚠️ 未登入' : (saveStatus === 'saving' ? '☁️ 同步中...' : '✅ 雲端已連線')}
-                            </p>
-                        </div>
-                        <button onClick={() => window.print()} className="p-2 bg-slate-200 rounded-full hover:bg-slate-300 no-print transition-colors">🖨️</button>
-                    </div>
-
-                    {UNIT_IDS.map(id => (
-                        <MachineUnit 
-                            key={`${activePage}-${id}`} id={id}
-                            groupData={allGroups[id]} sharedHeader={sharedHeader}
-                            options={options} onUpdate={onUpdateGroup} onSharedUpdate={onUpdateShared}
-                        />
-                    ))}
-
-                    <div className="mt-12 flex flex-col items-center no-print">
-                        <button onClick={clearPage} className="bg-red-500 text-white px-8 py-4 rounded-2xl font-black shadow-lg hover:bg-red-600 active:scale-95 transition">
-                            🗑️ 清空工作站 {activePage} 資料
-                        </button>
-                        <p className="mt-4 text-slate-400 text-xs italic">資料將即時從資料庫中刪除</p>
-                    </div>
-                </div>
-            );
+        function openModal() {
+            document.getElementById('settingsModal').style.display = 'flex';
         }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        function closeModal() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            let modal = document.getElementById('settingsModal');
+            if (event.target == modal) closeModal();
+        }
+
+        function saveConfig() {
+            localStorage.setItem('formConfig', JSON.stringify(config));
+            renderDropdowns();
+            renderConfigLists();
+        }
+
+        function addItem(type) {
+            const input = document.getElementById(`new_${type}`);
+            if (input.value.trim()) {
+                config[type].push(input.value.trim());
+                input.value = '';
+                saveConfig();
+            }
+        }
+
+        function removeItem(type, index) {
+            config[type].splice(index, 1);
+            saveConfig();
+        }
+
+        function renderConfigLists() {
+            ['staff', 'yarn', 'card', 'breakReason', 'emptyReason'].forEach(type => {
+                const ul = document.getElementById(`list_${type}`);
+                ul.innerHTML = config[type].map((item, index) => `
+                    <li class="flex justify-between items-center px-3 py-2 border-b last:border-0 hover:bg-gray-50 transition">
+                        <span>${item}</span>
+                        <button onclick="removeItem('${type}', ${index})" class="text-red-400 hover:text-red-600 font-bold p-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </li>
+                `).join('');
+            });
+        }
+
+        function renderDropdowns(clearAll = false) {
+            const savedValues = clearAll ? { staff: "", yarn: "", card: "", rows: [] } : {
+                staff: document.querySelector('.dropdown-staff').value,
+                yarn: document.querySelector('.dropdown-yarn').value,
+                card: document.querySelector('.dropdown-card').value,
+                rows: Array.from(document.querySelectorAll('#tableBody tr')).map(tr => ({
+                    status: tr.cells[1].querySelector('select').value,
+                    reason: tr.cells[4].querySelector('select').value,
+                    spinningPos: tr.cells[2].querySelector('input').value,
+                    length: tr.cells[3].querySelector('input').value
+                }))
+            };
+
+            document.querySelectorAll('.dropdown-staff').forEach(s => updateSelect(s, config.staff, savedValues.staff));
+            document.querySelectorAll('.dropdown-yarn').forEach(s => updateSelect(s, config.yarn, savedValues.yarn));
+            document.querySelectorAll('.dropdown-card').forEach(s => updateSelect(s, config.card, savedValues.card));
+            
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+            for (let i = 1; i <= 24; i++) {
+                const prevRow = (savedValues.rows && savedValues.rows[i-1]) || { status: "", reason: "", spinningPos: "", length: "" };
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="text-center text-sm font-bold bg-gray-50/30">${i}</td>
+                    <td>
+                        <select class="input-cell font-bold text-lg" onchange="handleStatusChange(this, ${i})">
+                            ${config.status.map(v => `<option value="${v}" ${v === prevRow.status ? 'selected' : ''}>${v}</option>`).join('')}
+                        </select>
+                    </td>
+                    <td><input type="text" class="input-cell" value="${prevRow.spinningPos}"></td>
+                    <td><input type="text" class="input-cell" value="${prevRow.length}"></td>
+                    <td>
+                        <select class="input-cell text-left px-2 reason-select">
+                            ${getReasonOptions(prevRow.status, prevRow.reason)}
+                        </select>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            }
+        }
+
+        // 根據狀態回傳對應的原因選項
+        function getReasonOptions(status, currentReason) {
+            let options = ['<option value=""></option>'];
+            let list = [];
+            if (status === 'O') list = config.breakReason;
+            else if (status === 'X') list = config.emptyReason;
+            
+            list.forEach(r => {
+                options.push(`<option value="${r}" ${r === currentReason ? 'selected' : ''}>${r}</option>`);
+            });
+            return options.join('');
+        }
+
+        // 當狀態 O/X 改變時，動態更新該行原因選單
+        function handleStatusChange(statusSelect, rowIdx) {
+            const row = statusSelect.closest('tr');
+            const reasonSelect = row.querySelector('.reason-select');
+            reasonSelect.innerHTML = getReasonOptions(statusSelect.value, "");
+        }
+
+        function updateSelect(el, items, savedVal) {
+            el.innerHTML = '<option value=""></option>' + items.map(item => `<option value="${item}" ${item === savedVal ? 'selected' : ''}>${item}</option>`).join('');
+        }
+
+        function confirmClear() {
+            if (confirm('確定要清空所有填寫內容並還原初始狀態嗎？')) {
+                document.querySelectorAll('#printableContent input[type="text"]').forEach(i => i.value = '');
+                renderDropdowns(true);
+                document.querySelectorAll('#printableContent select').forEach(s => s.selectedIndex = 0);
+            }
+        }
+
+        renderConfigLists();
+        renderDropdowns();
     </script>
 </body>
 </html>
