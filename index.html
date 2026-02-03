@@ -150,18 +150,8 @@
         </div>
 
         <div class="flex items-center gap-3">
-            <button onclick="manualSave()" class="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md hover:bg-emerald-700 transition-all flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                儲存所有資料
-            </button>
-            <div class="h-8 w-px bg-slate-200 mx-1"></div>
             <button onclick="openModal()" class="bg-white border border-slate-300 text-slate-600 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all">編輯選項清單</button>
             <button onclick="window.print()" class="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md hover:bg-blue-700 transition-all">列印預覽</button>
-        </div>
-        
-        <div class="w-full flex justify-end">
-            <button onclick="forceResetConfig()" class="text-red-400 text-[10px] hover:text-red-600 transition-colors font-bold uppercase tracking-widest mr-4">重置選單資料庫</button>
-            <button onclick="confirmClearData()" class="text-red-400 text-[10px] hover:text-red-600 transition-colors font-bold uppercase tracking-widest">清空當前機台輸入</button>
         </div>
     </div>
 
@@ -170,7 +160,6 @@
 
     <script>
         // --- 1. 系統狀態初始化 ---
-        // 變更版本號可以強制更新用戶端的預設選項
         const SYSTEM_VERSION = 'V1.1_UPDATE'; 
         const STORAGE_KEY = 'PROD_SYSTEM_FULL_STATE_V1';
 
@@ -198,17 +187,15 @@
             _version: SYSTEM_VERSION
         };
 
-        // 讀取狀態並檢查版本
+        // 讀取狀態
         let savedState = localStorage.getItem(STORAGE_KEY);
         let state;
 
         if (savedState) {
             state = JSON.parse(savedState);
-            // 檢查版本，如果版本不符，則強制更新 config 部分
             if (!state.config || state.config._version !== SYSTEM_VERSION) {
                 state.config = JSON.parse(JSON.stringify(defaultConfig));
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-                console.log("系統已自動更新選單資料庫至最新版本。");
             }
         } else {
             state = {
@@ -218,16 +205,6 @@
                 ],
                 config: defaultConfig
             };
-        }
-
-        // 強制重置功能的函數
-        function forceResetConfig() {
-            if (confirm("這將會把所有選單選項（人員、原因、管紗等）恢復為程式碼預設值，確定嗎？")) {
-                state.config = JSON.parse(JSON.stringify(defaultConfig));
-                saveState();
-                renderAllPages();
-                alert("選單資料庫已重置。");
-            }
         }
 
         // --- 2. 核心存儲功能 ---
@@ -240,18 +217,6 @@
                 });
             }
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        }
-
-        function manualSave() {
-            saveState();
-            const btn = event.currentTarget;
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '資料已安全儲存！';
-            btn.classList.replace('bg-emerald-600', 'bg-green-500');
-            setTimeout(() => {
-                btn.innerHTML = originalText;
-                btn.classList.replace('bg-green-500', 'bg-emerald-600');
-            }, 2000);
         }
 
         // --- 3. 機台管理邏輯 ---
@@ -302,17 +267,6 @@
             saveState();
             renderMachineSelector();
             renderAllPages();
-        }
-
-        function confirmClearData() {
-            if (confirm("確定要清空此機台表格內的所有輸入數值嗎？")) {
-                const machine = state.machines.find(m => m.id === state.activeId);
-                const p1 = machine.data.p1_range;
-                const p3 = machine.data.p3_range;
-                machine.data = { p1_range: p1, p3_range: p3 };
-                saveState();
-                renderAllPages();
-            }
         }
 
         // --- 4. 介面渲染核心 ---
