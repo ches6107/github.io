@@ -2,27 +2,27 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>生產記錄管理系統</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>生產記錄管理系統 - 全資料持久化版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { 
             font-family: "Inter", "Noto Sans TC", "微軟正黑體", sans-serif; 
-            background-color: #f8fafc;
+            background-color: #f1f5f9;
             color: #1e293b;
         }
         
-        /* 報表頁面樣式 */
         .page-container {
             background: white;
             padding: 20px;
-            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
             width: 100%;
             max-width: 1000px;
-            margin: 0 auto 40px auto;
-            min-height: 1100px;
+            margin: 0 auto 30px auto;
+            min-height: 1050px;
             page-break-after: always;
             position: relative;
+            border-radius: 8px;
         }
 
         .report-table {
@@ -31,20 +31,18 @@
             border: 1.5px solid #000;
             background: white;
             table-layout: fixed;
-            margin-left: auto;
-            margin-right: auto;
         }
         
         .report-table th, .report-table td {
             border: 1px solid #000;
-            height: 30px;
+            height: 32px;
             padding: 0;
             vertical-align: middle;
             text-align: center;
             font-size: 13px;
         }
 
-        .label-bg { background-color: #ffffff; font-weight: 500; }
+        .label-bg { background-color: #f8fafc; font-weight: 600; }
 
         .cell-input {
             width: 100%;
@@ -54,307 +52,274 @@
             text-align: center;
             font-size: 14px;
             background: transparent;
+            padding: 2px;
         }
 
-        select.cell-input { appearance: none; cursor: pointer; }
+        .cell-input:focus { background-color: #fffbeb; }
 
         @media print {
             .no-print { display: none !important; }
             body { background: white; padding: 0; }
             .page-container {
                 box-shadow: none;
-                margin: 0 auto;
+                margin: 0;
                 padding: 10mm;
                 max-width: none;
-                min-height: auto;
+                border-radius: 0;
             }
-            .report-table { border: 1.5px solid #000; }
-        }
-
-        .text-left-cell { text-align: left !important; padding-left: 6px !important; }
-        
-        .tab-controls {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: #fff;
-            padding: 10px 15px;
-            border-radius: 8px;
-            border: 1px solid #e2e8f0;
-        }
-
-        .range-select {
-            background-color: #f1f5f9;
-            font-weight: bold;
-            color: #1e40af;
-            cursor: pointer;
         }
 
         .watermark {
             position: absolute;
             top: 50%;
             left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 120px;
-            color: rgba(0, 0, 0, 0.03);
+            transform: translate(-50%, -50%) rotate(-30deg);
+            font-size: 100px;
+            color: rgba(0, 0, 0, 0.02);
             pointer-events: none;
-            z-index: 0;
             white-space: nowrap;
+            font-weight: bold;
         }
     </style>
 </head>
-<body class="p-2 sm:p-4">
+<body class="p-2 sm:p-6">
 
     <!-- 設定彈窗 -->
     <div id="settingsModal" class="no-print" style="display: none;">
-        <div class="fixed inset-0 bg-black/50 z-[1000] flex items-center justify-center p-4">
-            <div class="bg-white w-full max-w-4xl rounded-xl shadow-2xl overflow-hidden">
-                <div class="p-4 border-b flex justify-between items-center bg-slate-50">
-                    <h2 class="font-bold text-slate-700">系統選單管理 (已根據圖片更新)</h2>
-                    <button onclick="closeModal()" class="text-2xl hover:text-red-500 transition-colors">&times;</button>
+        <div class="fixed inset-0 bg-slate-900/60 z-[1000] flex items-center justify-center p-4 backdrop-blur-sm">
+            <div class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
+                <div class="p-5 border-b flex justify-between items-center bg-slate-50">
+                    <div>
+                        <h2 class="font-bold text-xl text-slate-800">選單資料庫管理</h2>
+                        <p class="text-xs text-slate-500 mt-1">此處修改的選項將套用到所有機台</p>
+                    </div>
+                    <button onclick="closeModal()" class="text-3xl hover:text-red-500 transition-colors">&times;</button>
                 </div>
-                <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 max-h-[75vh] overflow-y-auto">
+                <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 max-h-[65vh] overflow-y-auto">
+                    <!-- 人員 -->
                     <div class="space-y-2">
-                        <label class="text-xs font-bold text-blue-600 uppercase tracking-wider">昇絲人員</label>
-                        <div class="flex gap-1"><input type="text" id="new_staff" class="border flex-1 px-2 py-1 rounded text-sm"><button onclick="addItem('staff')" class="bg-blue-600 text-white px-2 rounded">+</button></div>
-                        <ul id="list_staff" class="border rounded h-48 overflow-y-auto text-sm bg-slate-50"></ul>
+                        <label class="text-xs font-bold text-blue-600 uppercase">昇絲人員</label>
+                        <div class="flex gap-1"><input type="text" id="new_staff" class="border flex-1 px-2 py-1.5 rounded text-sm"><button onclick="addItem('staff')" class="bg-blue-600 text-white px-3 rounded">+</button></div>
+                        <ul id="list_staff" class="border rounded-lg h-44 overflow-y-auto text-sm bg-slate-50"></ul>
                     </div>
+                    <!-- 管紗 -->
                     <div class="space-y-2">
-                        <label class="text-xs font-bold text-blue-600 uppercase tracking-wider">管紗代號</label>
-                        <div class="flex gap-1"><input type="text" id="new_yarn" class="border flex-1 px-2 py-1 rounded text-sm"><button onclick="addItem('yarn')" class="bg-blue-600 text-white px-2 rounded">+</button></div>
-                        <ul id="list_yarn" class="border rounded h-48 overflow-y-auto text-sm bg-slate-50"></ul>
+                        <label class="text-xs font-bold text-indigo-600 uppercase">管紗代號</label>
+                        <div class="flex gap-1"><input type="text" id="new_yarn" class="border flex-1 px-2 py-1.5 rounded text-sm"><button onclick="addItem('yarn')" class="bg-indigo-600 text-white px-3 rounded">+</button></div>
+                        <ul id="list_yarn" class="border rounded-lg h-44 overflow-y-auto text-sm bg-slate-50"></ul>
                     </div>
+                    <!-- 試驗卡 -->
                     <div class="space-y-2">
-                        <label class="text-xs font-bold text-blue-600 uppercase tracking-wider">試驗卡別 (顏色)</label>
-                        <div class="flex gap-1"><input type="text" id="new_testCard" class="border flex-1 px-2 py-1 rounded text-sm"><button onclick="addItem('testCard')" class="bg-blue-600 text-white px-2 rounded">+</button></div>
-                        <ul id="list_testCard" class="border rounded h-48 overflow-y-auto text-sm bg-slate-50"></ul>
+                        <label class="text-xs font-bold text-cyan-600 uppercase">試驗卡別</label>
+                        <div class="flex gap-1"><input type="text" id="new_testCard" class="border flex-1 px-2 py-1.5 rounded text-sm"><button onclick="addItem('testCard')" class="bg-cyan-600 text-white px-3 rounded">+</button></div>
+                        <ul id="list_testCard" class="border rounded-lg h-44 overflow-y-auto text-sm bg-slate-50"></ul>
                     </div>
+                    <!-- 斷絲 -->
                     <div class="space-y-2">
-                        <label class="text-xs font-bold text-red-500 uppercase tracking-wider">斷絲原因 (O)</label>
-                        <div class="flex gap-1"><input type="text" id="new_breakReason" class="border flex-1 px-2 py-1 rounded border-red-200 text-sm"><button onclick="addItem('breakReason')" class="bg-red-600 text-white px-2 rounded">+</button></div>
-                        <ul id="list_breakReason" class="border rounded h-48 overflow-y-auto text-sm bg-slate-50"></ul>
+                        <label class="text-xs font-bold text-red-500 uppercase">斷絲原因 (O)</label>
+                        <div class="flex gap-1"><input type="text" id="new_breakReason" class="border flex-1 px-2 py-1.5 rounded text-sm"><button onclick="addItem('breakReason')" class="bg-red-600 text-white px-3 rounded">+</button></div>
+                        <ul id="list_breakReason" class="border rounded-lg h-44 overflow-y-auto text-sm bg-slate-50"></ul>
                     </div>
+                    <!-- 空錠 -->
                     <div class="space-y-2">
-                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">空錠原因 (X)</label>
-                        <div class="flex gap-1"><input type="text" id="new_emptyReason" class="border flex-1 px-2 py-1 rounded text-sm"><button onclick="addItem('emptyReason')" class="bg-slate-700 text-white px-2 rounded">+</button></div>
-                        <ul id="list_emptyReason" class="border rounded h-48 overflow-y-auto text-sm bg-slate-50"></ul>
+                        <label class="text-xs font-bold text-slate-500 uppercase">空錠原因 (X)</label>
+                        <div class="flex gap-1"><input type="text" id="new_emptyReason" class="border flex-1 px-2 py-1.5 rounded text-sm"><button onclick="addItem('emptyReason')" class="bg-slate-700 text-white px-3 rounded">+</button></div>
+                        <ul id="list_emptyReason" class="border rounded-lg h-44 overflow-y-auto text-sm bg-slate-50"></ul>
                     </div>
                 </div>
-                <div class="p-4 bg-slate-50 border-t text-center">
-                    <button onclick="closeModal()" class="bg-slate-800 text-white px-8 py-2 rounded-lg font-bold hover:bg-slate-900 transition-colors">確認套用並儲存</button>
+                <div class="p-5 bg-slate-50 border-t flex justify-center gap-4">
+                    <button onclick="closeModal()" class="bg-slate-800 text-white px-10 py-2.5 rounded-xl font-bold hover:bg-slate-900 shadow-lg transition-all active:scale-95">完成設定並返回</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 工具欄 -->
-    <div class="max-w-[1000px] mx-auto mb-4 no-print flex flex-wrap justify-between items-center bg-white p-4 rounded-lg shadow-sm gap-4 border border-slate-200">
+    <!-- 工具控制列 -->
+    <div class="max-w-[1000px] mx-auto mb-6 no-print flex flex-wrap justify-between items-center bg-white p-5 rounded-xl shadow-sm gap-4 border border-slate-200">
         
-        <div class="tab-controls">
-            <span class="text-sm font-bold text-slate-500">當前機台：</span>
-            <select id="machineSelector" onchange="switchMachine(this.value)" class="border rounded px-2 py-1 text-sm font-bold bg-slate-50 border-slate-300 min-w-[120px] outline-none focus:border-blue-500">
-            </select>
-            <button onclick="addNewMachine()" title="新增機台" class="w-8 h-8 flex items-center justify-center bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 font-bold transition-colors">+</button>
-            <button id="delMachineBtn" onclick="deleteCurrentMachine()" title="刪除此機台" class="w-8 h-8 flex items-center justify-center bg-red-50 text-red-600 rounded-full hover:bg-red-100 font-bold transition-colors">×</button>
+        <div class="flex items-center gap-3">
+            <div class="flex flex-col">
+                <span class="text-[10px] font-black text-slate-400 uppercase ml-1 mb-1">機台選擇</span>
+                <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+                    <select id="machineSelector" onchange="switchMachine(this.value)" class="bg-transparent px-3 py-1.5 text-sm font-bold text-slate-700 outline-none min-w-[100px]">
+                    </select>
+                    <button onclick="addNewMachine()" class="bg-white text-blue-600 w-8 h-8 rounded-md shadow-sm hover:bg-blue-600 hover:text-white transition-all font-bold">+</button>
+                    <button id="delMachineBtn" onclick="deleteCurrentMachine()" class="bg-white text-red-500 w-8 h-8 rounded-md shadow-sm hover:bg-red-500 hover:text-white transition-all font-bold">×</button>
+                </div>
+            </div>
         </div>
 
-        <div class="flex items-center gap-2">
-            <!-- 新增存儲鍵 -->
-            <button onclick="manualSave()" class="bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow hover:bg-emerald-700 transition-colors flex items-center gap-1">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                儲存當前設定
+        <div class="flex items-center gap-3">
+            <button onclick="manualSave()" class="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md hover:bg-emerald-700 transition-all flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                儲存所有資料
             </button>
-            <button onclick="openModal()" class="border border-slate-300 px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">設定選單</button>
-            <button onclick="window.print()" class="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow hover:bg-blue-700 transition-colors">列印報表</button>
-            <button onclick="confirmClearCurrentMachine()" class="text-red-500 text-xs px-2 py-1 hover:bg-red-50 rounded transition-colors font-medium">清空當前機台數據</button>
+            <div class="h-8 w-px bg-slate-200 mx-1"></div>
+            <button onclick="openModal()" class="bg-white border border-slate-300 text-slate-600 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all">編輯選項清單</button>
+            <button onclick="window.print()" class="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md hover:bg-blue-700 transition-all">列印預覽</button>
+        </div>
+        
+        <div class="w-full flex justify-end">
+            <button onclick="confirmClearData()" class="text-red-400 text-[10px] hover:text-red-600 transition-colors font-bold uppercase tracking-widest">清空當前機台所有輸入數值</button>
         </div>
     </div>
 
-    <!-- 報表顯示區域 -->
+    <!-- 報表主容器 -->
     <div id="pagesContainer"></div>
 
     <script>
-        // 初始狀態
-        let state = JSON.parse(localStorage.getItem('prodSystemState_v5')) || {
-            activeId: 'm-default',
-            machines: [
-                { id: 'm-default', name: 'A', data: {} }
-            ],
-            config: {
-                staff: [
-                    "C/瑪菈", "C/潘妮達", "C/安恰麗", "C/潘娣", "C/蒂帕灣", "C/佩娃", "C/凱魯納",
-                    "A/林宜安", "A/陳美麗", "A/洪子惠", "A/阿娜", "A/妮達雅", "A/芭莉恰", "A/蘇西", "A/阿雅", "A/蘇帕嵐",
-                    "B/周嘉玟", "B/劉漆琦", "B/安琪琳", "B/阿蓉功", "B/馬妮拉", "B/歐拉莎", "B/萍品荼", "B/梯達拉"
-                ],
-                yarn: ["T1D1T", "T1D1U", "T1D1A", "T1D5C", "T1D5U", "TEE2K", "T2D5R", "T2D1M", "TMD4A", "TMD4D"],
-                testCard: ["無", "白", "紫", "黃黑", "紫白", "白藍", "橘", "黃", "紅", "粉紅", "紅綠"],
-                breakReason: [
-                    "毛破", "毛破IP", "毛破IP (細)", "IP", "反捲", "反捲IP", "無管底紗", "無絲頭", 
-                    "單關巡(夾紗)", "單關巡(凹陷)", "單關巡(凸緣)", "絲束正常", "夾紗", "夾廢絲", "鄰錠波及", "撞傷"
-                ],
-                emptyReason: ["無絲頭", "反捲", "漿疤", "氣泡數降A2", "中層紗", "異常卡", "跳停"],
-                status: ["", "O", "X"]
-            }
+        // --- 1. 系統狀態初始化 ---
+        const STORAGE_KEY = 'PROD_SYSTEM_FULL_STATE_V1';
+
+        // 預設配置與資料
+        const defaultConfig = {
+            staff: ["C/瑪菈", "C/潘妮達", "A/林宜安", "A/陳美麗", "B/周嘉玟", "B/劉漆琦"],
+            yarn: ["T1D1T", "T1D1U", "T1D1A", "T2D5R", "T2D1M"],
+            testCard: ["無", "白", "紫", "黃黑", "白藍", "橘", "紅"],
+            breakReason: ["毛破", "毛破IP", "IP", "反捲", "無管底紗", "絲束正常", "夾紗", "撞傷"],
+            emptyReason: ["無絲頭", "反捲", "漿疤", "異常卡", "跳停"],
+            status: ["", "O", "X"]
         };
 
-        // --- 核心邏輯 ---
+        let state = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {
+            activeId: 'm-default',
+            machines: [
+                { id: 'm-default', name: '機台 A', data: { p1_range: '1-24', p3_range: '49-72' } }
+            ],
+            config: defaultConfig
+        };
 
-        // 儲存當前狀態（包含 UI 所有輸入值）
+        // --- 2. 核心存儲功能 ---
+
         function saveState() {
-            if (state.activeId) {
-                const currentMachine = state.machines.find(m => m.id === state.activeId);
-                if (currentMachine) {
-                    currentMachine.data = collectCurrentPageData();
-                }
+            const activeMachine = state.machines.find(m => m.id === state.activeId);
+            if (activeMachine) {
+                // 遍歷所有帶有 data-field 的元素並存儲其 value
+                document.querySelectorAll('[data-field]').forEach(el => {
+                    activeMachine.data[el.getAttribute('data-field')] = el.value;
+                });
             }
-            localStorage.setItem('prodSystemState_v5', JSON.stringify(state));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         }
 
-        // 手動儲存按鈕點擊事件
         function manualSave() {
             saveState();
             const btn = event.currentTarget;
             const originalText = btn.innerHTML;
-            btn.innerHTML = '已儲存！';
+            btn.innerHTML = '資料已安全儲存！';
             btn.classList.replace('bg-emerald-600', 'bg-green-500');
             setTimeout(() => {
                 btn.innerHTML = originalText;
                 btn.classList.replace('bg-green-500', 'bg-emerald-600');
-            }, 1500);
+            }, 2000);
         }
 
-        function collectCurrentPageData() {
-            const data = {};
-            document.querySelectorAll('[data-field]').forEach(el => {
-                data[el.getAttribute('data-field')] = el.value;
-            });
-            return data;
-        }
+        // --- 3. 機台切換邏輯 ---
 
         function renderMachineSelector() {
             const selector = document.getElementById('machineSelector');
             selector.innerHTML = state.machines.map(m => `
                 <option value="${m.id}" ${m.id === state.activeId ? 'selected' : ''}>${m.name}</option>
             `).join('');
-            document.getElementById('delMachineBtn').style.display = state.machines.length > 1 ? 'flex' : 'none';
+            document.getElementById('delMachineBtn').style.display = state.machines.length > 1 ? 'block' : 'none';
         }
 
         function switchMachine(id) {
-            saveState(); // 切換前存檔
+            saveState(); // 切換前保存舊機台
             state.activeId = id;
             renderMachineSelector();
-            renderReportPage();
+            renderAllPages();
         }
 
         function addNewMachine() {
-            const name = prompt("請輸入新機台名稱 (例如 B, C):");
+            const name = prompt("請輸入新機台名稱 (例如: 機台 B):");
             if (!name) return;
-            
-            saveState(); // 切換前存檔
-
-            // 繼承當前頁面的分頁設定
-            const currentP1Range = document.querySelector('[data-field="p1_range"]')?.value || "1-24";
-            const currentP3Range = document.querySelector('[data-field="p3_range"]')?.value || "49-72";
-
+            saveState();
             const id = 'm-' + Date.now();
-            state.machines.push({ 
-                id, 
-                name, 
-                data: {
-                    p1_range: currentP1Range,
-                    p3_range: currentP3Range
-                } 
-            });
-            
+            state.machines.push({ id, name, data: { p1_range: '1-24', p3_range: '49-72' } });
             state.activeId = id;
             saveState();
             renderMachineSelector();
-            renderReportPage();
+            renderAllPages();
         }
 
         function deleteCurrentMachine() {
-            if (!confirm('確定刪除此機台所有記錄嗎？')) return;
+            if (state.machines.length <= 1) return;
+            const current = state.machines.find(m => m.id === state.activeId);
+            if (!confirm(`確定要刪除「${current.name}」的所有數據嗎？此操作不可還原。`)) return;
+            
             state.machines = state.machines.filter(m => m.id !== state.activeId);
             state.activeId = state.machines[0].id;
             saveState();
             renderMachineSelector();
-            renderReportPage();
+            renderAllPages();
         }
 
-        // 修改：僅清空當前機台數據，不影響其他機台
-        function confirmClearCurrentMachine() {
-            const machine = state.machines.find(m => m.id === state.activeId);
-            if (!machine) return;
-            
-            if (confirm(`確定要清空機台「${machine.name}」的所有輸入數據嗎？ (設定選單將保留)`)) {
-                // 保留分頁範圍設定，清空其餘數據
-                const p1r = machine.data.p1_range;
-                const p3r = machine.data.p3_range;
-                machine.data = {
-                    p1_range: p1r,
-                    p3_range: p3r
-                };
+        function confirmClearData() {
+            if (confirm("確定要清空此機台表格內手動輸入的所有數值嗎？(選單清單會保留)")) {
+                const machine = state.machines.find(m => m.id === state.activeId);
+                // 僅保留結構性設定
+                const p1 = machine.data.p1_range;
+                const p3 = machine.data.p3_range;
+                machine.data = { p1_range: p1, p3_range: p3 };
                 saveState();
-                renderReportPage();
+                renderAllPages();
             }
         }
 
-        // --- 報表渲染 ---
+        // --- 4. 介面渲染核心 ---
 
-        function renderReportPage() {
+        function renderAllPages() {
             const container = document.getElementById('pagesContainer');
             const machine = state.machines.find(m => m.id === state.activeId);
-            const machineData = machine.data || {};
+            const mData = machine.data || {};
 
-            const range1 = machineData.p1_range || "1-24";
-            const range3 = machineData.p3_range || "49-72";
+            const range1 = mData.p1_range || "1-24";
+            const range3 = mData.p3_range || "49-72";
 
             let html = '';
-            const pages = [];
+            const pageConfigs = [];
             
+            // 第一區
             if (range1 === "1-48") {
-                pages.push({ id: 1, start: 1, end: 48, showRangeSelect: true, rangeType: 'p1' });
+                pageConfigs.push({ id: 1, start: 1, end: 48, rType: 'p1', canChange: true });
             } else {
-                pages.push({ id: 1, start: 1, end: 24, showRangeSelect: true, rangeType: 'p1' });
-                pages.push({ id: 2, start: 25, end: 48, showRangeSelect: false });
+                pageConfigs.push({ id: 1, start: 1, end: 24, rType: 'p1', canChange: true });
+                pageConfigs.push({ id: 2, start: 25, end: 48 });
             }
-
+            // 第二區
             if (range3 === "49-96") {
-                pages.push({ id: 3, start: 49, end: 96, showRangeSelect: true, rangeType: 'p3' });
+                pageConfigs.push({ id: 3, start: 49, end: 96, rType: 'p3', canChange: true });
             } else {
-                pages.push({ id: 3, start: 49, end: 72, showRangeSelect: true, rangeType: 'p3' });
-                pages.push({ id: 4, start: 73, end: 96, showRangeSelect: false });
+                pageConfigs.push({ id: 3, start: 49, end: 72, rType: 'p3', canChange: true });
+                pageConfigs.push({ id: 4, start: 73, end: 96 });
             }
 
-            pages.forEach((pageConfig) => {
-                const rowCount = pageConfig.end - pageConfig.start + 1;
-
+            pageConfigs.forEach(pg => {
+                const count = pg.end - pg.start + 1;
                 html += `
                 <div class="page-container">
-                    <div class="watermark no-print">第 ${pageConfig.id} 頁</div>
+                    <div class="watermark no-print">第 ${pg.id} 頁</div>
                     
-                    <!-- 第一區塊：基本資訊 -->
                     <table class="report-table mb-[-1px]">
                         <tr>
-                            <td class="w-[18%] label-bg border-b-0">機台-落絲號</td>
+                            <td class="w-[18%] label-bg">機台名稱</td>
                             <td class="w-[12%] label-bg">項目</td>
                             <td class="w-[20%] label-bg">滿管</td>
                             <td class="w-[20%] label-bg">未滿管</td>
                             <td class="w-[15%] label-bg">空錠</td>
-                            <td class="w-[15%] label-bg border-b-0">錠位範圍</td>
+                            <td class="w-[15%] label-bg">錠位範圍</td>
                         </tr>
                         <tr>
-                            <td class="border-t-0">
-                                <input type="text" class="cell-input font-bold" value="${machine.name}" readonly>
-                            </td>
+                            <td class="font-bold text-blue-700">${machine.name}</td>
                             <td class="label-bg">代號</td>
-                            <td><input type="text" class="cell-input" data-field="code_val" value="${machineData.code_val || ''}"></td>
-                            <td class="font-bold text-red-600 text-lg">O</td>
-                            <td class="font-bold text-slate-400 text-lg">X</td>
-                            <td class="border-t-0 p-0">
-                                ${pageConfig.showRangeSelect ? `
-                                    <select class="cell-input range-select" data-field="${pageConfig.rangeType}_range" onchange="switchRange()">
-                                        ${pageConfig.rangeType === 'p1' ? `
+                            <td><input type="text" class="cell-input" data-field="code_${pg.id}" value="${mData['code_'+pg.id] || ''}"></td>
+                            <td class="font-bold text-red-600">O</td>
+                            <td class="font-bold text-slate-400">X</td>
+                            <td class="p-0">
+                                ${pg.canChange ? `
+                                    <select class="cell-input font-bold text-blue-600 cursor-pointer" data-field="${pg.rType}_range" onchange="saveState(); renderAllPages();">
+                                        ${pg.rType === 'p1' ? `
                                             <option value="1-24" ${range1 === '1-24' ? 'selected' : ''}>1-24</option>
                                             <option value="1-48" ${range1 === '1-48' ? 'selected' : ''}>1-48</option>
                                         ` : `
@@ -362,194 +327,155 @@
                                             <option value="49-96" ${range3 === '49-96' ? 'selected' : ''}>49-96</option>
                                         `}
                                     </select>
-                                ` : `
-                                    <div class="bg-gray-100 font-bold h-full flex items-center justify-center">${pageConfig.start}-${pageConfig.end}</div>
-                                `}
+                                ` : `<div class="bg-slate-50 font-bold h-full flex items-center justify-center">${pg.start}-${pg.end}</div>`}
                             </td>
                         </tr>
                         <tr>
-                            <td class="label-bg font-bold border-b-0">昇絲人員</td>
-                            <td class="label-bg font-bold" rowspan="2">落絲數</td>
-                            <td rowspan="2"><input type="text" class="cell-input" data-field="total_full" value="${machineData.total_full || ''}"></td>
-                            <td rowspan="2"><input type="text" class="cell-input" data-field="total_not_full" value="${machineData.total_not_full || ''}"></td>
-                            <td rowspan="2"><input type="text" class="cell-input" data-field="total_empty" value="${machineData.total_empty || ''}"></td>
-                            <td rowspan="2" class="border-t-0 bg-slate-50"></td>
+                            <td class="label-bg">昇絲人員</td>
+                            <td class="label-bg" rowspan="2">落絲數</td>
+                            <td rowspan="2"><input type="text" class="cell-input font-bold" data-field="total_full_${pg.id}" value="${mData['total_full_'+pg.id] || ''}"></td>
+                            <td rowspan="2"><input type="text" class="cell-input font-bold" data-field="total_not_${pg.id}" value="${mData['total_not_'+pg.id] || ''}"></td>
+                            <td rowspan="2"><input type="text" class="cell-input font-bold" data-field="total_empty_${pg.id}" value="${mData['total_empty_'+pg.id] || ''}"></td>
+                            <td rowspan="2" class="bg-slate-50"></td>
                         </tr>
                         <tr>
-                            <td class="border-t-0">
-                                <select class="cell-input font-bold" data-field="staff_val">
+                            <td>
+                                <select class="cell-input font-bold" data-field="staff_${pg.id}">
                                     <option></option>
-                                    ${state.config.staff.map(s => `<option value="${s}" ${machineData.staff_val === s ? 'selected' : ''}>${s}</option>`).join('')}
+                                    ${state.config.staff.map(s => `<option value="${s}" ${mData['staff_'+pg.id] === s ? 'selected' : ''}>${s}</option>`).join('')}
                                 </select>
                             </td>
                         </tr>
                     </table>
 
-                    <!-- 第二區塊：班別與掛絲資訊 -->
                     <table class="report-table mb-4">
-                        <tr class="label-bg">
-                            <td style="width:14%">管紗代號</td>
-                            <td style="width:14%">試驗卡別</td>
-                            <td style="width:14%">狀態</td>
-                            <td style="width:14%">紡織班別</td>
-                            <td style="width:14%">中檢班別</td>
-                            <td style="width:15%">掛絲數量</td>
-                            <td style="width:15%">落絲數量</td>
+                        <tr class="label-bg text-[11px]">
+                            <td class="w-[14%]">管紗代號</td><td class="w-[14%]">試驗卡別</td><td class="w-[14%]">狀態</td>
+                            <td class="w-[14%]">紡織班別</td><td class="w-[14%]">中檢班別</td><td class="w-[15%]">掛絲數量</td><td class="w-[15%]">落絲數量</td>
                         </tr>
                         <tr>
-                            <td>
-                                <select class="cell-input" data-field="yarn_type">
-                                    <option></option>
-                                    ${state.config.yarn.map(y => `<option value="${y}" ${machineData.yarn_type === y ? 'selected' : ''}>${y}</option>`).join('')}
-                                </select>
-                            </td>
-                            <td>
-                                <select class="cell-input" data-field="test_card">
-                                    <option></option>
-                                    ${state.config.testCard.map(tc => `<option value="${tc}" ${machineData.test_card === tc ? 'selected' : ''}>${tc}</option>`).join('')}
-                                </select>
-                            </td>
-                            <td>
-                                <select class="cell-input font-bold" data-field="info_status">
-                                    <option></option>
-                                    <option value="CD" ${machineData.info_status === 'CD' ? 'selected' : ''}>CD</option>
-                                    <option value="BO" ${machineData.info_status === 'BO' ? 'selected' : ''}>BO</option>
-                                    <option value="TTS" ${machineData.info_status === 'TTS' ? 'selected' : ''}>TTS</option>
-                                </select>
-                            </td>
-                            <td>
-                                <select class="cell-input" data-field="work_shift">
-                                    <option></option>
-                                    <option value="A" ${machineData.work_shift === 'A' ? 'selected' : ''}>A</option>
-                                    <option value="B" ${machineData.work_shift === 'B' ? 'selected' : ''}>B</option>
-                                    <option value="C" ${machineData.work_shift === 'C' ? 'selected' : ''}>C</option>
-                                </select>
-                            </td>
-                            <td>
-                                <select class="cell-input" data-field="check_shift">
-                                    <option></option>
-                                    <option value="A" ${machineData.check_shift === 'A' ? 'selected' : ''}>A</option>
-                                    <option value="B" ${machineData.check_shift === 'B' ? 'selected' : ''}>B</option>
-                                    <option value="C" ${machineData.check_shift === 'C' ? 'selected' : ''}>C</option>
-                                </select>
-                            </td>
-                            <td><input type="text" class="cell-input" data-field="hang_qty" value="${machineData.hang_qty || ''}"></td>
-                            <td><input type="text" class="cell-input" data-field="drop_qty" value="${machineData.drop_qty || ''}"></td>
+                            <td><select class="cell-input" data-field="y_${pg.id}">${genOpts('yarn', mData['y_'+pg.id])}</select></td>
+                            <td><select class="cell-input" data-field="tc_${pg.id}">${genOpts('testCard', mData['tc_'+pg.id])}</select></td>
+                            <td><select class="cell-input font-bold" data-field="st_${pg.id}">
+                                <option></option><option value="CD" ${mData['st_'+pg.id]=='CD'?'selected':''}>CD</option>
+                                <option value="BO" ${mData['st_'+pg.id]=='BO'?'selected':''}>BO</option>
+                                <option value="TTS" ${mData['st_'+pg.id]=='TTS'?'selected':''}>TTS</option>
+                            </select></td>
+                            <td><select class="cell-input" data-field="ws_${pg.id}">${genShiftOpts(mData['ws_'+pg.id])}</select></td>
+                            <td><select class="cell-input" data-field="cs_${pg.id}">${genShiftOpts(mData['cs_'+pg.id])}</select></td>
+                            <td><input type="text" class="cell-input" data-field="hq_${pg.id}" value="${mData['hq_'+pg.id]||''}"></td>
+                            <td><input type="text" class="cell-input" data-field="dq_${pg.id}" value="${mData['dq_'+pg.id]||''}"></td>
                         </tr>
                     </table>
 
-                    <!-- 明細表 -->
                     <table class="report-table">
-                        <thead>
-                            <tr class="label-bg">
-                                <th class="w-[10%]">錠位</th><th class="w-[15%]">非滿管 O、空錠 X</th>
-                                <th class="w-[10%]">紡位</th><th class="w-[15%]">米長</th>
-                                <th class="text-left-cell">斷絲、空錠原因</th>
+                        <thead class="label-bg">
+                            <tr>
+                                <th class="w-[10%]">錠位</th><th class="w-[15%]">O 或 X</th><th class="w-[10%]">紡位</th><th class="w-[15%]">米長</th><th class="text-left px-2">原因</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${Array.from({length: rowCount}, (_, i) => pageConfig.start + i).map(idx => `
+                            ${Array.from({length: count}, (_, i) => pg.start + i).map(idx => `
                                 <tr>
-                                    <td class="label-bg font-bold text-slate-500">${idx}</td>
+                                    <td class="label-bg font-mono text-slate-400">${idx}</td>
                                     <td>
-                                        <select class="cell-input font-bold status-select" 
-                                                data-field="row_${idx}_status" 
-                                                onchange="handleStatusChange(this, ${idx})">
-                                            ${state.config.status.map(v => `<option value="${v}" ${machineData[`row_${idx}_status`] === v ? 'selected' : ''}>${v}</option>`).join('')}
+                                        <select class="cell-input font-bold status-trigger" data-field="r_${idx}_s" onchange="updateReasonCell(this, ${idx})">
+                                            ${state.config.status.map(v => `<option value="${v}" ${mData[`r_${idx}_s`] === v ? 'selected' : ''}>${v}</option>`).join('')}
                                         </select>
                                     </td>
-                                    <td><input type="text" class="cell-input" data-field="row_${idx}_pos" value="${machineData[`row_${idx}_pos`] || ''}"></td>
-                                    <td><input type="text" class="cell-input" data-field="row_${idx}_len" value="${machineData[`row_${idx}_len`] || ''}"></td>
-                                    <td class="text-left-cell">
-                                        <select class="cell-input text-left-cell reason-select" data-field="row_${idx}_reason">
-                                        </select>
+                                    <td><input type="text" class="cell-input" data-field="r_${idx}_p" value="${mData[`r_${idx}_p`] || ''}"></td>
+                                    <td><input type="text" class="cell-input" data-field="r_${idx}_l" value="${mData[`r_${idx}_l`] || ''}"></td>
+                                    <td class="text-left px-1">
+                                        <select class="cell-input text-left reason-box" data-field="r_${idx}_r"></select>
                                     </td>
                                 </tr>
                             `).join('')}
                         </tbody>
                     </table>
-                    <div class="mt-4 flex justify-between items-center text-xs text-slate-400">
-                        <span>機台：${machine.name} | 錠位範疇：${pageConfig.start}~${pageConfig.end}</span>
-                        <span>製表日期：${new Date().toLocaleDateString()}</span>
-                    </div>
-                </div>
-                `;
+                </div>`;
             });
 
             container.innerHTML = html;
 
-            for (let idx = 1; idx <= 96; idx++) {
-                const el = document.querySelector(`[data-field="row_${idx}_status"]`);
-                if (el) handleStatusChange(el, idx, false);
-            }
+            // 初始載入原因選單內容
+            document.querySelectorAll('.status-trigger').forEach(el => {
+                const idx = el.getAttribute('data-field').split('_')[1];
+                updateReasonCell(el, idx, false);
+            });
 
-            // 確保所有異動都會觸發自動儲存 (除了手動按鈕外，變更也會即時存入 localStorage)
+            // 監聽所有輸入實現自動儲存
             container.querySelectorAll('input, select').forEach(el => {
-                el.addEventListener('change', saveState);
+                el.addEventListener('input', saveState);
             });
         }
 
-        function switchRange() {
-            saveState();
-            renderReportPage();
+        // 輔助生成選項
+        function genOpts(type, selected) {
+            return '<option></option>' + state.config[type].map(v => `<option value="${v}" ${selected === v ? 'selected' : ''}>${v}</option>`).join('');
+        }
+        function genShiftOpts(selected) {
+            return ['','A','B','C'].map(v => `<option value="${v}" ${selected === v ? 'selected' : ''}>${v}</option>`).join('');
         }
 
-        function handleStatusChange(statusSelect, idx, shouldSave = true) {
-            const row = statusSelect.closest('tr');
-            if (!row) return;
-            const reasonSelect = row.querySelector('.reason-select');
-            const status = statusSelect.value;
+        function updateReasonCell(statusEl, idx, triggerSave = true) {
+            const row = statusEl.closest('tr');
+            const reasonSelect = row.querySelector('.reason-box');
+            const status = statusEl.value;
             const machine = state.machines.find(m => m.id === state.activeId);
-            const savedReason = machine.data[`row_${idx}_reason`] || '';
+            const savedReason = machine.data[`r_${idx}_r`] || '';
             
-            let options = ['<option value=""></option>'];
-            let list = (status === 'O') ? state.config.breakReason : (status === 'X' ? state.config.emptyReason : []);
-            list.forEach(r => options.push(`<option value="${r}" ${savedReason === r ? 'selected' : ''}>${r}</option>`));
-            
-            reasonSelect.innerHTML = options.join('');
-            
-            if (status === 'O') statusSelect.style.color = '#ef4444';
-            else if (status === 'X') statusSelect.style.color = '#94a3b8';
-            else statusSelect.style.color = '#000';
+            let list = [];
+            if (status === 'O') {
+                list = state.config.breakReason;
+                statusEl.style.color = '#ef4444';
+            } else if (status === 'X') {
+                list = state.config.emptyReason;
+                statusEl.style.color = '#64748b';
+            } else {
+                statusEl.style.color = '#000';
+            }
 
-            if (shouldSave) saveState();
+            reasonSelect.innerHTML = '<option></option>' + list.map(r => `<option value="${r}" ${savedReason === r ? 'selected' : ''}>${r}</option>`).join('');
+            
+            if (triggerSave) saveState();
         }
 
-        // --- 設定管理 ---
+        // --- 5. 設定彈窗管理 ---
 
-        function openModal() { 
-            renderConfigLists();
-            document.getElementById('settingsModal').style.display = 'block'; 
+        function openModal() {
+            renderConfigUI();
+            document.getElementById('settingsModal').style.display = 'block';
         }
-        function closeModal() { 
-            document.getElementById('settingsModal').style.display = 'none'; 
-            renderReportPage();
+
+        function closeModal() {
+            document.getElementById('settingsModal').style.display = 'none';
+            renderAllPages();
         }
 
         function addItem(type) {
             const input = document.getElementById(`new_${type}`);
-            if (input.value.trim()) {
-                state.config[type].push(input.value.trim());
+            const val = input.value.trim();
+            if (val && !state.config[type].includes(val)) {
+                state.config[type].push(val);
                 input.value = '';
                 saveState();
-                renderConfigLists();
+                renderConfigUI();
             }
         }
 
-        function removeItem(type, index) {
-            state.config[type].splice(index, 1);
+        function removeItem(type, idx) {
+            state.config[type].splice(idx, 1);
             saveState();
-            renderConfigLists();
+            renderConfigUI();
         }
 
-        function renderConfigLists() {
+        function renderConfigUI() {
             ['staff', 'yarn', 'testCard', 'breakReason', 'emptyReason'].forEach(type => {
                 const ul = document.getElementById(`list_${type}`);
-                if (!ul) return;
-                ul.innerHTML = state.config[type].map((item, index) => `
-                    <li class="flex justify-between items-center px-3 py-1.5 border-b last:border-0 hover:bg-white transition-colors">
-                        <span>${item}</span>
-                        <button onclick="removeItem('${type}', ${index})" class="text-red-400 hover:text-red-600">&times;</button>
+                ul.innerHTML = state.config[type].map((item, i) => `
+                    <li class="flex justify-between items-center px-3 py-2 border-b border-slate-100 hover:bg-white">
+                        <span class="font-medium text-slate-700">${item}</span>
+                        <button onclick="removeItem('${type}', ${i})" class="text-slate-300 hover:text-red-500 font-bold px-1">×</button>
                     </li>
                 `).join('');
             });
@@ -557,7 +483,7 @@
 
         window.onload = () => {
             renderMachineSelector();
-            renderReportPage();
+            renderAllPages();
         };
     </script>
 </body>
