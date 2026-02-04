@@ -245,14 +245,16 @@
             saveState();
             const newId = 'm-' + Date.now();
             
-            // 預設為 1-24, 25-48, 49-72, 73-96 的分頁模式，且 data 為完全空值
+            // 重要：明確初始化一個完全乾淨的資料物件
+            const emptyData = { 
+                p1_range: '1-24', 
+                p3_range: '49-72' 
+            };
+            
             state.machines.push({ 
                 id: newId, 
                 name: name, 
-                data: { 
-                    p1_range: '1-24', 
-                    p3_range: '49-72' 
-                } 
+                data: emptyData 
             });
             
             state.activeId = newId;
@@ -276,6 +278,7 @@
         function renderAllPages() {
             const container = document.getElementById('pagesContainer');
             const machine = state.machines.find(m => m.id === state.activeId);
+            // 確保資料存在，如果不存在則給予空物件
             const mData = machine.data || {};
 
             const range1 = mData.p1_range || "1-24";
@@ -292,7 +295,8 @@
 
             pageConfigs.forEach(pg => {
                 const count = pg.end - pg.start + 1;
-                const currentStaff = mData['staff_1'] || mData['staff_2'] || mData['staff_3'] || mData['staff_4'] || '';
+                // 讀取當前機台特定頁面的昇絲人員
+                const currentStaff = mData[`staff_${pg.id}`] || '';
 
                 html += `
                 <div class="page-container">
@@ -375,12 +379,16 @@
 
             container.innerHTML = html;
             
+            // 初始化原因下拉選單的選項
             document.querySelectorAll('.status-trigger').forEach(el => {
                 const idx = el.getAttribute('data-field').split('_')[1];
                 updateReasonCell(el, idx, false);
             });
+
+            // 監聽所有輸入欄位變更
             container.querySelectorAll('input, select').forEach(el => {
                 if (!el.getAttribute('data-field').startsWith('staff_')) {
+                    el.addEventListener('change', saveState);
                     el.addEventListener('input', saveState);
                 }
             });
@@ -398,9 +406,15 @@
             const savedReason = (machine.data && machine.data[`r_${idx}_r`]) || '';
             
             let list = [];
-            if (status === 'O') { list = state.config.breakReason; statusEl.style.color = '#ef4444'; }
-            else if (status === 'X') { list = state.config.emptyReason; statusEl.style.color = '#64748b'; }
-            else statusEl.style.color = '#000';
+            if (status === 'O') { 
+                list = state.config.breakReason; 
+                statusEl.style.color = '#ef4444'; 
+            } else if (status === 'X') { 
+                list = state.config.emptyReason; 
+                statusEl.style.color = '#64748b'; 
+            } else {
+                statusEl.style.color = '#000';
+            }
 
             reasonSelect.innerHTML = '<option></option>' + list.map(r => `<option value="${r}" ${savedReason === r ? 'selected' : ''}>${r}</option>`).join('');
             if (triggerSave) saveState();
