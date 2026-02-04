@@ -207,7 +207,8 @@
             const machine = state.machines.find(m => m.id === state.activeId);
             if (machine) {
                 machine.data = machine.data || {};
-                document.querySelectorAll('[data-field]').forEach(el => {
+                const inputs = document.querySelectorAll('[data-field]');
+                inputs.forEach(el => {
                     machine.data[el.getAttribute('data-field')] = el.value;
                 });
             }
@@ -232,7 +233,7 @@
         }
 
         function switchMachine(id) {
-            saveState();
+            saveState(); // 切換前保存舊機台
             state.activeId = id;
             renderMachineSelector();
             renderAllPages();
@@ -242,11 +243,12 @@
             const name = prompt("輸入新機台名稱:");
             if (!name) return;
             
-            saveState();
+            saveState(); // 新增前保存當前機台
+            
             const newId = 'm-' + Date.now();
             
-            // 新增機台：徹底清除資料，僅保留預設範圍
-            const emptyData = { 
+            // 強制初始化乾淨的資料物件，預設範圍 1-24, 49-72
+            const initialData = { 
                 p1_range: '1-24', 
                 p3_range: '49-72' 
             };
@@ -254,11 +256,13 @@
             state.machines.push({ 
                 id: newId, 
                 name: name, 
-                data: emptyData 
+                data: initialData 
             });
             
             state.activeId = newId;
-            saveState();
+            
+            // 立即存儲並重新渲染
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
             renderMachineSelector();
             renderAllPages();
         }
@@ -381,11 +385,13 @@
 
             container.innerHTML = html;
             
+            // 初始化錠位的原因下拉選單
             document.querySelectorAll('.status-trigger').forEach(el => {
                 const idx = el.getAttribute('data-field').split('_')[1];
                 updateReasonCell(el, idx, false);
             });
 
+            // 監聽所有輸入變動
             container.querySelectorAll('input, select').forEach(el => {
                 if (!el.getAttribute('data-field').startsWith('staff_')) {
                     el.addEventListener('change', saveState);
