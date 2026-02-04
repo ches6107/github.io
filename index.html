@@ -245,7 +245,7 @@
             saveState();
             const newId = 'm-' + Date.now();
             
-            // 新增機台：清除所有資料，僅保留預設的分頁範圍 (1-24, 25-48, 49-72, 73-96)
+            // 新增機台：徹底清除資料，僅保留預設範圍
             const emptyData = { 
                 p1_range: '1-24', 
                 p3_range: '49-72' 
@@ -267,9 +267,7 @@
             if (state.machines.length <= 1) return;
             if (!confirm("確定刪除此機台所有資料？")) return;
             
-            // 只刪除當前機台
             state.machines = state.machines.filter(m => m.id !== state.activeId);
-            // 切換到剩餘的第一個機台
             state.activeId = state.machines[0].id;
             
             saveState();
@@ -291,7 +289,7 @@
             let html = '';
             const pageConfigs = [];
             
-            // 定義分頁邏輯
+            // 分頁範圍邏輯
             if (range1 === "1-48") pageConfigs.push({ id: 1, start: 1, end: 48, rType: 'p1', canChange: true });
             else { pageConfigs.push({ id: 1, start: 1, end: 24, rType: 'p1', canChange: true }); pageConfigs.push({ id: 2, start: 25, end: 48 }); }
             
