@@ -174,7 +174,7 @@
     <div id="pagesContainer"></div>
 
     <script>
-        // --- 1. 資料初始化 (根據圖片更新預設值) ---
+        // --- 1. 資料初始化 ---
         const STORAGE_KEY = 'PROD_SYSTEM_STATE_V2';
 
         const defaultConfig = {
@@ -245,7 +245,7 @@
             saveState();
             const newId = 'm-' + Date.now();
             
-            // 重要：明確初始化一個完全乾淨的資料物件
+            // 新增機台：清除所有資料，僅保留預設的分頁範圍 (1-24, 25-48, 49-72, 73-96)
             const emptyData = { 
                 p1_range: '1-24', 
                 p3_range: '49-72' 
@@ -266,8 +266,12 @@
         function deleteCurrentMachine() {
             if (state.machines.length <= 1) return;
             if (!confirm("確定刪除此機台所有資料？")) return;
+            
+            // 只刪除當前機台
             state.machines = state.machines.filter(m => m.id !== state.activeId);
+            // 切換到剩餘的第一個機台
             state.activeId = state.machines[0].id;
+            
             saveState();
             renderMachineSelector();
             renderAllPages();
@@ -278,15 +282,16 @@
         function renderAllPages() {
             const container = document.getElementById('pagesContainer');
             const machine = state.machines.find(m => m.id === state.activeId);
-            // 確保資料存在，如果不存在則給予空物件
-            const mData = machine.data || {};
+            if (!machine) return;
 
+            const mData = machine.data || {};
             const range1 = mData.p1_range || "1-24";
             const range3 = mData.p3_range || "49-72";
 
             let html = '';
             const pageConfigs = [];
             
+            // 定義分頁邏輯
             if (range1 === "1-48") pageConfigs.push({ id: 1, start: 1, end: 48, rType: 'p1', canChange: true });
             else { pageConfigs.push({ id: 1, start: 1, end: 24, rType: 'p1', canChange: true }); pageConfigs.push({ id: 2, start: 25, end: 48 }); }
             
@@ -295,7 +300,6 @@
 
             pageConfigs.forEach(pg => {
                 const count = pg.end - pg.start + 1;
-                // 讀取當前機台特定頁面的昇絲人員
                 const currentStaff = mData[`staff_${pg.id}`] || '';
 
                 html += `
@@ -379,13 +383,11 @@
 
             container.innerHTML = html;
             
-            // 初始化原因下拉選單的選項
             document.querySelectorAll('.status-trigger').forEach(el => {
                 const idx = el.getAttribute('data-field').split('_')[1];
                 updateReasonCell(el, idx, false);
             });
 
-            // 監聽所有輸入欄位變更
             container.querySelectorAll('input, select').forEach(el => {
                 if (!el.getAttribute('data-field').startsWith('staff_')) {
                     el.addEventListener('change', saveState);
@@ -400,6 +402,7 @@
 
         function updateReasonCell(statusEl, idx, triggerSave = true) {
             const row = statusEl.closest('tr');
+            if (!row) return;
             const reasonSelect = row.querySelector('.reason-box');
             const status = statusEl.value;
             const machine = state.machines.find(m => m.id === state.activeId);
